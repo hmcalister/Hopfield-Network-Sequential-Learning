@@ -1,0 +1,3 @@
+from .AbstractPatternDistanceFunction import AbstractPatternDistanceFunction
+from .HammingPatternDistance import HammingPatternDistance
+from .EuclideanPatternDistance import EuclideanPatternDistance

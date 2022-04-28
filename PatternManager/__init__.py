@@ -1,0 +1,4 @@
+from .SequentialLearningPatternManager import SequentialLearningPatternManager
+from .TaskPatternManager import TaskPatternManager
+
+from . import PatternDistanceFunction
