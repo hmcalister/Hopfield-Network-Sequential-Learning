@@ -76,26 +76,15 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().setState(state)
 
-    def learnPatterns(self, patterns:List[np.ndarray], taskPatterns:List[List[np.ndarray]]=None)->Union[None, List[List[np.float64]]]:
+    def learnPatterns(self, patterns:List[np.ndarray])->None:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
-        Any extra checking of these patterns must be done by an implementing network, hence the abstractmethod decorator.
 
         Args:
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
-            taskPatterns (List[List[np.ndarray]], optional): The taskPatterns to measure the accuracy on. If not None is sent straight to
-                self.measureTaskPatternAccuracies(). See that method description for details. Measures accuracies each epoch. Defaults to None.
 
-        Returns: None or List[np.float64]
-            None if testPatternsDict is None, i.e. no measuring of accuracies is requested
-            Otherwise, accuracies for each task for each epoch. Returned value is like
-            [
-                Epoch 1,
-                Epoch 2,
-                Epoch 3,
-                ...
-            ]
+        Returns: None
         """
 
-        return super().learnPatterns(patterns, taskPatterns)
+        return super().learnPatterns(patterns)
