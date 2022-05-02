@@ -1,4 +1,4 @@
-# Hopfield Network: Numpy Implementation 
+# Hopfield Network: Sequential Learning
 
 This is a *very* abstract implementation of a Hopfield network. The abstractions taken here are:
 
