@@ -13,6 +13,8 @@ class Hebbian(AbstractLearningRule):
         self.updateSteps = 0
         self.maxEpoches = 1
 
+        self.numStatesLearned = 0
+
     def __str__(self):
         return "Hebbian"
 
@@ -33,4 +35,12 @@ class Hebbian(AbstractLearningRule):
         for pattern in patterns:
             weightChanges = weightChanges+np.outer(pattern, pattern)
 
-        return weights+(1/len(patterns))*weightChanges
+        if self.numStatesLearned==0:
+            self.numStatesLearned+=len(patterns)
+            return weights+(1/len(patterns))*weightChanges
+        else:
+            weights = weights*self.numStatesLearned
+            weights += weightChanges
+            self.numStatesLearned+=len(patterns)
+            weights /= self.numStatesLearned
+            return weights

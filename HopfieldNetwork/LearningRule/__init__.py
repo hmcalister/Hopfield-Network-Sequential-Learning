@@ -1,4 +1,4 @@
 from .AbstractLearningRule import AbstractLearningRule
 from .Hebbian import Hebbian
-from .BinaryHebbian import BinaryHebbian
+from .MappedBinaryHebbian import MappedBinaryHebbian
 from .Delta import Delta

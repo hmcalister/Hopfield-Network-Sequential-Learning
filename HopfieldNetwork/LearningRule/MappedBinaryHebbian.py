@@ -3,15 +3,18 @@ from typing import List
 import numpy as np
 
 
-class BinaryHebbian(AbstractLearningRule):
+class MappedBinaryHebbian(AbstractLearningRule):
 
     def __init__(self):
         """
-        Create a new Hebbian Learning Rule
+        Create a new MappedBinaryHebbian Learning Rule
+        This maps the binary field to the bipolar field, allowing for negative weight updates
         """
 
         self.updateSteps = 0
         self.maxEpoches = 1
+
+        self.numStatesLearned = 0
 
     def __str__(self):
         return "BinaryHebbian"
@@ -31,6 +34,14 @@ class BinaryHebbian(AbstractLearningRule):
 
         weightChanges = np.zeros_like(weights)
         for pattern in patterns:
-            weightChanges = weightChanges+np.outer(2*pattern-1, 2*pattern-1)
+            weightChanges = weightChanges+np.outer(2*pattern-1,2*pattern-1)
 
-        return weights+(1/len(patterns))*weightChanges
+        if self.numStatesLearned==0:
+            self.numStatesLearned+=len(patterns)
+            return weights+(1/len(patterns))*weightChanges
+        else:
+            weights = weights*self.numStatesLearned
+            weights += weightChanges
+            self.numStatesLearned+=len(patterns)
+            weights /= self.numStatesLearned
+            return weights
