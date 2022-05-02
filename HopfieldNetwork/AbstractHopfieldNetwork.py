@@ -112,7 +112,7 @@ class AbstractHopfieldNetwork(ABC):
 
         if state.shape != (self.N,): raise ValueError()
         if state.dtype != np.float64: raise ValueError()
-        self.state = state
+        self.state = state.copy()
 
     def relax(self, maxSteps:int=None)->np.ndarray:
         """
@@ -191,7 +191,8 @@ class AbstractHopfieldNetwork(ABC):
 
         return np.array_equal(self.getState(), state) or np.array_equal(-1*self.getState(), state)
 
-    def measureTaskPatternStability(self, taskPatterns:List[List[np.ndarray]])->List[np.float64]:
+
+    def measureTaskPatternStability(self, taskPatterns:List[List[np.ndarray]])->Tuple[List[np.float64], int]:
         """
         Measure the fraction of task patterns that are stable/remembered with the current network weights.
         The taskPatterns param is a list of lists. Ew. 
@@ -202,11 +203,13 @@ class AbstractHopfieldNetwork(ABC):
             taskPatterns (List[List[np.ndarray]]): A nested list of all task patterns.
 
         Returns:
-            List[np.float64]: A list of floats measuring the fraction of stable task patterns learned
+            Tuple[List[np.float64], int]: A list of floats measuring the fraction of stable task patterns learned
                 The returned list at index 0 is the accuracy of the network on the first task
+                Also, the number of actual stable patterns
         """
 
         taskAccuracies = []
+        numStable = 0
 
         for task in taskPatterns:
             taskAccuracy = 0
@@ -218,10 +221,11 @@ class AbstractHopfieldNetwork(ABC):
                     continue
                 if self.compareState(pattern):
                     taskAccuracy+=1
+                    numStable+=1
             taskAccuracy/=len(task)
             taskAccuracies.append(taskAccuracy)
 
-        return taskAccuracies
+        return taskAccuracies, numStable
 
     def measureTestAccuracy(self, testPatternMappings:List[Tuple[np.ndarray, np.ndarray]])->np.float64:
         """
@@ -241,7 +245,6 @@ class AbstractHopfieldNetwork(ABC):
         accuracy = 0
 
         for i, (input,expectedOutput) in enumerate(testPatternMappings):
-            print(f"{i+1}/{len(testPatternMappings)}", end="\r")
             self.setState(input)
             try:
                 self.relax()
@@ -250,13 +253,12 @@ class AbstractHopfieldNetwork(ABC):
             if self.compareState(expectedOutput):
                 accuracy+=1
 
-        print()
         return accuracy/len(testPatternMappings)
             
 
 
     @abstractmethod
-    def learnPatterns(self, patterns:List[np.ndarray], testPatternMappings:List[Tuple[np.ndarray, np.ndarray]]=None)->Union[None, List[np.float64]]:
+    def learnPatterns(self, patterns:List[np.ndarray])->None:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
@@ -264,22 +266,11 @@ class AbstractHopfieldNetwork(ABC):
 
         Args:
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
-            testPatternsDict (List[Tuple[np.ndarray, np.ndarray]], optional): The test patterns to measure the accuracy on.
-                A list of tuples like (input, expectedOutput)
 
-        Returns: None or List[np.float64]
-            None if testPatternsDict is None, i.e. no measuring of accuracies is requested
-            Otherwise, accuracies for each task for each epoch. Returned value is like
-            [
-                Epoch 1,
-                Epoch 2,
-                Epoch 3,
-                ...
-            ]
+        Returns: None
         """
 
         resultStates = []
-        testAccuracies = []
 
         # Ensure patterns are correct type and shape
         for pattern in patterns:
@@ -308,11 +299,6 @@ class AbstractHopfieldNetwork(ABC):
             if not self.selfConnections:
                 np.fill_diagonal(self.weights, 0)
 
-            # If there tasks to measure accuracies on
-            if testPatternMappings is not None:
-                # Measure those accuracies and record them
-                testAccuracies.append(self.measureTestAccuracy(testPatternMappings))
-
             # Check if we are done with this epoch
             # We are finished if the network has learned all patterns successfully
             learnedAllPatterns = True
@@ -329,8 +315,4 @@ class AbstractHopfieldNetwork(ABC):
 
             if learnedAllPatterns:
                 break
-        # print()
-        # Finally, return the task accuracies if asked for
-        if testPatternMappings is not None:
-            return testAccuracies
             
