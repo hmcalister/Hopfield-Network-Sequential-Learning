@@ -89,7 +89,7 @@ class SequentialLearningPatternManager():
 
         return nearbyPattern
 
-    def createTasks(self, numTasks:int, numPatternsPerTask:int, numNearbyMappingsPerPattern:int)->List[TaskPatternManager]:
+    def createTasks(self, numTasks:int, numPatternsPerTask:int, numNearbyMappingsPerPattern:int=0)->List[TaskPatternManager]:
         """
         Create a number of tasks to be learned sequentially by a Hopfield network. Each task will have
         (numPatternsPerTask) patterns, and each pattern will have (numNearbyMappingsPerPattern) nearby mappings to test.
@@ -131,6 +131,10 @@ class SequentialLearningPatternManager():
                 taskPatterns=taskPatterns.copy(),
                 nearbyMappings=nearbyMappings.copy()
             ))
+            
+            # for task in self.taskPatternManagers:
+            #     print(f"{task}: {task.taskPatterns}")
+            # print()
 
         return self.taskPatternManagers
 
@@ -177,7 +181,7 @@ class SequentialLearningPatternManager():
             if not patternUnique: continue
 
             # Add this pattern to the list of patterns and reset the step counter
-            taskPatterns.append(currPattern)
+            taskPatterns.append(currPattern.copy())
             currSteps = 0
 
         self.allTaskPatterns:List[np.ndarray] = taskPatterns
@@ -220,8 +224,6 @@ class SequentialLearningPatternManager():
                     raise ValueError()
                 
                 currNearby = self._generateNearbyPattern(desiredTaskPattern)
-                # print(f"desiredTaskPattern=\t{desiredTaskPattern}")
-                # print(f"currNearby=\t\t{currNearby}")
 
                 # Check if the pattern is unique
                 # If the pattern is not unique, restart the loop

@@ -20,6 +20,9 @@ class TaskPatternManager():
         self.taskPatterns:List[np.ndarray] = taskPatterns
         self.nearbyMappings:List[Tuple[np.ndarray, np.ndarray]] = nearbyMappings
 
+    def __str__(self):
+        return self.name
+
     def getTaskPatterns(self)->List[np.ndarray]:
         """
         Get the task patterns for this task
