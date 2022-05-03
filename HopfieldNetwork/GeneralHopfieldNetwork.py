@@ -1,39 +1,27 @@
 from typing import List, Union
-
 from .AbstractHopfieldNetwork import AbstractHopfieldNetwork
-
 from .UpdateRule.AbstractUpdateRule import AbstractUpdateRule
-from .UpdateRule.AsynchronousList import AsynchronousList
-
 from .EnergyFunction.AbstractEnergyFunction import AbstractEnergyFunction
-from .EnergyFunction.BinaryEnergyFunction import BinaryEnergyFunction
-
 from .UpdateRule.ActivationFunction.AbstractActivationFunction import AbstractActivationFunction
-from .UpdateRule.ActivationFunction.BinaryHeaviside import BinaryHeaviside
-
 from .LearningRule.AbstractLearningRule import AbstractLearningRule
-from .LearningRule.Hebbian import Hebbian
-from .LearningRule.MappedBinaryHebbian import MappedBinaryHebbian
-
 import numpy as np
 
 class RelaxationException(Exception):
     pass
 
-class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
+class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
 
     def __init__(self, 
-                N:int, 
+                N:int,
+                energyFunction:AbstractEnergyFunction,
+                activationFunction:AbstractActivationFunction, 
+                updateRule:AbstractUpdateRule,
+                learningRule:AbstractLearningRule, 
                 weights:np.ndarray=None,
                 selfConnections:bool=False):
         """
-        Create a new Binary Hopfield network with N units.
-        Almost all of the options are chosen, enforced for consistency.
-
-        ActivationFunction is BinaryHeaviside.
-        UpdateRule is AsynchList.
-        LearningRule is Hebbian.
-        EnergyFunction is BinaryEnergy.
+        Create a new General Hopfield network with N units.
+        All options are available in the constructor.
         
         If weights is supplied, the network weights are set to the supplied weights.
 
@@ -42,6 +30,17 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
             weights (np.ndarray, optional): The weights of the network, if supplied. Intended to be used to recreate a network for testing.
                 If supplied, must be a 2-D matrix of float64 with size N*N. If None, random weights are created uniformly around 0.
                 Defaults to None.
+            activationFunction (AbstractActivationFunction): The activation function to use with this network. 
+                Must implement HopfieldNetwork.ActivationFunction.AbstractActivationFunction
+                The given functions in HopfieldNetwork.ActivationFunction do this.
+            updateRule (AbstractUpdateRule): The update rule for this network.
+                Must implement HopfieldNetwork.UpdateRule.AbstractUpdateRule
+                The given methods in HopfieldNetwork.UpdateRule do this.
+            learningRule (AbstractLearningRule): The learning rule for this network.
+                Must implement HopfieldNetwork.LearningRule.AbstractUpdateRule
+                The given methods in HopfieldNetwork.LearningRule do this.
+            weights (np.ndarray, optional): The weights of this network. Must be of dimension N*N.
+                Used for reproducibility. Defaults to None.
             selfConnections (bool, optional): Determines if self connections are allowed or if they are zeroed out during learning
                 Defaults to False. (No self connections)
 
@@ -51,16 +50,16 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().__init__(
             N=N,
-            energyFunction=BinaryEnergyFunction(),
-            activationFunction=BinaryHeaviside(),
-            updateRule=AsynchronousList(BinaryHeaviside()),
-            learningRule=MappedBinaryHebbian(),
+            energyFunction=energyFunction,
+            activationFunction=activationFunction,
+            updateRule=updateRule,
+            learningRule=learningRule,
             weights=weights,
             selfConnections=selfConnections
         )
 
     def __str__(self):
-        return ("Hopfield Network: BinaryHopfieldNetwork\n"
+        return ("Hopfield Network: GeneralHopfieldNetwork\n"
             + super().__str__())
 
     def setState(self, state:np.ndarray):
@@ -76,22 +75,7 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
             ValueError: If the given state is not a float64 vector of size N.
         """
 
-        super().setState(state.copy())
-
-    def compareState(self, state:np.ndarray)->bool:
-        """
-        Compares the given state to the state of the network right now
-        Returns True if the two states are the same, false otherwise
-        Accepts the inverse state as equal
-
-        Args:
-            state (np.ndarray): The state to compare to
-
-        Returns:
-            bool: True if the given state is the same as the network state, false otherwise
-        """
-
-        return np.array_equal(self.getState(), state) or np.array_equal(-1*self.getState()+1, state)
+        super().setState(state)
 
     def learnPatterns(self, patterns:List[np.ndarray])->None:
         """

@@ -1,9 +1,19 @@
 from typing import List, Union
+
 from .AbstractHopfieldNetwork import AbstractHopfieldNetwork
-from .UpdateRule import AbstractUpdateRule
+
+from .UpdateRule.AbstractUpdateRule import AbstractUpdateRule
+from .UpdateRule.AsynchronousList import AsynchronousList
+
 from .EnergyFunction.AbstractEnergyFunction import AbstractEnergyFunction
-from .UpdateRule.ActivationFunction import AbstractActivationFunction
-from .LearningRule import AbstractLearningRule
+from .EnergyFunction.BipolarEnergyFunction import BipolarEnergyFunction
+
+from .UpdateRule.ActivationFunction.AbstractActivationFunction import AbstractActivationFunction
+from .UpdateRule.ActivationFunction.BipolarHeaviside import BipolarHeaviside
+
+from .LearningRule.AbstractLearningRule import AbstractLearningRule
+from .LearningRule.Hebbian import Hebbian
+
 import numpy as np
 
 class RelaxationException(Exception):
@@ -12,15 +22,17 @@ class RelaxationException(Exception):
 class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
 
     def __init__(self, 
-                N:int,
-                energyFunction:AbstractEnergyFunction,
-                activationFunction:AbstractActivationFunction, 
-                updateRule:AbstractUpdateRule,
-                learningRule:AbstractLearningRule, 
+                N:int, 
                 weights:np.ndarray=None,
                 selfConnections:bool=False):
         """
-        Create a new Hopfield network with N units.
+        Create a new Bipolar Hopfield network with N units.
+        Almost all of the options are chosen, enforced for consistency.
+
+        ActivationFunction is BipolarHeaviside.
+        UpdateRule is AsynchList.
+        LearningRule is Hebbian.
+        EnergyFunction is BipolarEnergy.
         
         If weights is supplied, the network weights are set to the supplied weights.
 
@@ -29,17 +41,6 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
             weights (np.ndarray, optional): The weights of the network, if supplied. Intended to be used to recreate a network for testing.
                 If supplied, must be a 2-D matrix of float64 with size N*N. If None, random weights are created uniformly around 0.
                 Defaults to None.
-            activationFunction (AbstractActivationFunction): The activation function to use with this network. 
-                Must implement HopfieldNetwork.ActivationFunction.AbstractActivationFunction
-                The given functions in HopfieldNetwork.ActivationFunction do this.
-            updateRule (AbstractUpdateRule): The update rule for this network.
-                Must implement HopfieldNetwork.UpdateRule.AbstractUpdateRule
-                The given methods in HopfieldNetwork.UpdateRule do this.
-            learningRule (AbstractLearningRule): The learning rule for this network.
-                Must implement HopfieldNetwork.LearningRule.AbstractUpdateRule
-                The given methods in HopfieldNetwork.LearningRule do this.
-            weights (np.ndarray, optional): The weights of this network. Must be of dimension N*N.
-                Used for reproducibility. Defaults to None.
             selfConnections (bool, optional): Determines if self connections are allowed or if they are zeroed out during learning
                 Defaults to False. (No self connections)
 
@@ -49,10 +50,10 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().__init__(
             N=N,
-            energyFunction=energyFunction,
-            activationFunction=activationFunction,
-            updateRule=updateRule,
-            learningRule=learningRule,
+            energyFunction=BipolarEnergyFunction(),
+            activationFunction=BipolarHeaviside(),
+            updateRule=AsynchronousList(BipolarHeaviside()),
+            learningRule=Hebbian(),
             weights=weights,
             selfConnections=selfConnections
         )
@@ -74,7 +75,7 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
             ValueError: If the given state is not a float64 vector of size N.
         """
 
-        super().setState(state)
+        super().setState(state.copy())
 
     def learnPatterns(self, patterns:List[np.ndarray])->None:
         """
@@ -87,4 +88,4 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
         Returns: None
         """
 
-        return super().learnPatterns(patterns)
+        return super().learnPatterns(patterns.copy())
