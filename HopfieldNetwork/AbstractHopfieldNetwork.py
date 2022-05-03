@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple
+
 from .EnergyFunction.AbstractEnergyFunction import AbstractEnergyFunction
-from .UpdateRule import AbstractUpdateRule
-from .UpdateRule.ActivationFunction import AbstractActivationFunction
-from .LearningRule import AbstractLearningRule
+from .UpdateRule.AbstractUpdateRule import AbstractUpdateRule
+from .UpdateRule.ActivationFunction.AbstractActivationFunction import AbstractActivationFunction
+from .LearningRule.AbstractLearningRule import AbstractLearningRule
+
 import numpy as np
 
 class RelaxationException(Exception):
@@ -54,7 +56,7 @@ class AbstractHopfieldNetwork(ABC):
         if weights is not None:
             if weights.shape!=(N,N): raise ValueError()
             if weights.dtype != np.float64: raise ValueError()
-            self.weights = weights
+            self.weights = weights.copy()
         else:
             self.weights = np.zeros([N,N])
         
@@ -81,7 +83,7 @@ class AbstractHopfieldNetwork(ABC):
             np.ndarray: the 2-D matrix of weights of this network, of type float 32
         """
 
-        return self.weights
+        return self.weights.copy()
 
     def getState(self)->np.ndarray:
         """
@@ -91,7 +93,7 @@ class AbstractHopfieldNetwork(ABC):
             np.ndarray: The float64 vector of size N representing the state of this network
         """
 
-        return self.state
+        return self.state.copy()
 
     @abstractmethod
     def setState(self, state:np.ndarray):
@@ -102,6 +104,8 @@ class AbstractHopfieldNetwork(ABC):
 
         This method is abstract so implementing classes must explicitly implement it, 
         meaning any extra checking is explicitly added or eschewed before a call to super.
+
+        This method creates a copy of the given state to ensure no weird side effects occur.
 
         Args:
             state (np.ndarray): The state to set this network to.
@@ -133,7 +137,7 @@ class AbstractHopfieldNetwork(ABC):
             maxSteps=self.updateRule.MAX_STEPS
 
         current_step = 0
-        # while self.networkEnergy() >= 0:
+        # TODO: Better way to calculate this? Stability of Network...
         while np.any(self.unitEnergies()<=0):
             if current_step > maxSteps:
                 raise RelaxationException()
@@ -158,7 +162,8 @@ class AbstractHopfieldNetwork(ABC):
 
     def networkEnergy(self)->np.float64:
         """
-        Get the total energy of the network. If the energy is less than 0, the network is stable.
+        Get the total energy of the network. If the energy is greater than 0, the network is stable.
+        TODO: Get this working. Always the same equation?? Greater than 0 stable????
 
         Returns:
             float64: Dimension 1, a single value of float64. The total energy of this network in the current state.
@@ -199,6 +204,8 @@ class AbstractHopfieldNetwork(ABC):
         The first index is the task number. taskPatterns[0] is a list of all tasks in the first task.
         The second index is a specific pattern from a task
 
+        TODO: Fix this method up to be more sensible
+
         Args:
             taskPatterns (List[List[np.ndarray]]): A nested list of all task patterns.
 
@@ -231,6 +238,7 @@ class AbstractHopfieldNetwork(ABC):
         """
         Given a mapping from input to expected output patterns, calculate the accuracy of the network on those mappings
         TODO: Maybe look at more refined accuracy measurements? Hamming dist?
+        TODO: Fix this method up to be more sensible
 
         Args:
             testPatternsDict (List[Tuple[[np.ndarray, np.ndarray]]): The test patterns to measure the accuracy on.
@@ -254,8 +262,6 @@ class AbstractHopfieldNetwork(ABC):
                 accuracy+=1
 
         return accuracy/len(testPatternMappings)
-            
-
 
     @abstractmethod
     def learnPatterns(self, patterns:List[np.ndarray])->None:
