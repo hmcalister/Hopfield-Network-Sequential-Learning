@@ -20,8 +20,8 @@ class BinaryEnergyFunction(AbstractEnergyFunction):
             np.ndarray: The vector of energies corresponding to the units in the state
         """
 
-        energies = np.dot(weights, state)
-        energies = energies*state
+        nextState = np.dot(weights, state)
+        energies = (2*nextState-1)*(2*state-1)
         return energies
 
     def __str__(self):

@@ -20,8 +20,8 @@ class BipolarEnergyFunction(AbstractEnergyFunction):
             np.ndarray: The vector of energies corresponding to the units in the state
         """
 
-        energies = np.dot(weights, state)
-        energies = energies*state
+        nextState = np.dot(weights, state)
+        energies = nextState*state
         return energies
 
     def __str__(self):

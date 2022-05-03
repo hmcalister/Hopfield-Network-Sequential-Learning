@@ -28,13 +28,12 @@ class AsynchronousPermutation(AbstractUpdateRule):
             np.ndarray: The next state of the network
         """
 
-        nextState=currentState
+        nextState=currentState.copy()
         energies = self.energyFunction(currentState, weights)
         updateOrder = np.where(energies<0)
         np.random.shuffle(updateOrder)
-        print(f"{energies=}")
-        print(f"{updateOrder=}")
-
+        # print(f"{energies=}")
+        # print(f"{updateOrder=}")
         
         for updateIndex in updateOrder:
             nextState[updateIndex] = self.activationFunction(np.dot(weights[updateIndex], nextState))
