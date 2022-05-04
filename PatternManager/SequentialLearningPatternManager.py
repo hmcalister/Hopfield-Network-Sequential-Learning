@@ -306,8 +306,8 @@ class SequentialLearningPatternManager():
 
         Args:
             numRandom (int): The number of random patterns to make
-            changeRatio(np.float64): The fraction of units to change in each pattern
             learnedPatterns (List[np.ndarray]): The list of learned patterns of the network so far
+            changeRatio(np.float64): The fraction of units to change in each pattern
 
         Returns:
             List[Tuple[np.ndarray, nd.ndarray]]: A list of key value pairs of the form (randomPattern, desiredLearnedPattern)
