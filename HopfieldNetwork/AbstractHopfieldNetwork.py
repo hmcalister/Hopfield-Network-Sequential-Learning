@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from .EnergyFunction.AbstractEnergyFunction import AbstractEnergyFunction
 from .UpdateRule.AbstractUpdateRule import AbstractUpdateRule
@@ -201,7 +201,7 @@ class AbstractHopfieldNetwork(ABC):
         """
         Measure the fraction of task patterns that are stable/remembered with the current network weights.
         The taskPatterns param is a list of lists. Ew. 
-        The first index is the task number. taskPatterns[0] is a list of all tasks in the first task.
+        The first index is the task number. taskPatterns[0] is a list of all patterns in the first task.
         The second index is a specific pattern from a task
 
         TODO: Fix this method up to be more sensible
@@ -225,7 +225,8 @@ class AbstractHopfieldNetwork(ABC):
                 try:
                     self.relax(self.learningRule.updateSteps)
                 except RelaxationException as e:
-                    continue
+                    pass
+
                 if self.compareState(pattern):
                     taskAccuracy+=1
                     numStable+=1
@@ -264,7 +265,7 @@ class AbstractHopfieldNetwork(ABC):
         return accuracy/len(testPatternMappings)
 
     @abstractmethod
-    def learnPatterns(self, patterns:List[np.ndarray])->None:
+    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None)->Union[None, Tuple[List[List[np.float64]], List[int]]]:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
@@ -272,11 +273,16 @@ class AbstractHopfieldNetwork(ABC):
 
         Args:
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
+            allTaskPatterns (List[List[np.ndarray]] or None, optional): If given, will track the task pattern stability by epoch during training.
+                Passed straight to measureTaskPatternAccuracy. Defaults to None.
 
-        Returns: None
+        Returns: None or List[Tuple[List[np.float64], int]]]
+            If allTaskPatterns is None, returns None
+            If allTaskPatterns is present, returns a list over epochs of tuples. Tuples are of form (list of task accuracies, num stable learned patterns overall)
         """
 
-        resultStates = []
+        taskAccuracies = []
+        numStableByEpoch = []
 
         # Ensure patterns are correct type and shape
         for pattern in patterns:
@@ -284,8 +290,13 @@ class AbstractHopfieldNetwork(ABC):
             if pattern.dtype != np.float64: raise ValueError()
         
         # Loop until we reach the maximum number of epochs in the learning rule
-        for epoch in range(self.learningRule.maxEpoches):
-            # print(f"{epoch+1}/{self.learningRule.maxEpoches}", end="\r")
+        for epoch in range(self.learningRule.epochs):
+            resultStates = []
+
+            if self.learningRule.epochs>=1:
+                print(f"Epoch: {epoch+1}/{self.learningRule.epochs}", end="\r")
+            
+
             # If the learning rule needs the current network predictions (e.g. delta)
             if self.learningRule.updateSteps>0:
                 # Calculate that prediction for each pattern and store it
@@ -293,32 +304,23 @@ class AbstractHopfieldNetwork(ABC):
                     self.setState(pattern)
                     try:
                         self.relax(self.learningRule.updateSteps)
+                        resultStates.append(self.getState())
                     except RelaxationException as e:
                         resultStates.append(self.getState())
-                        continue
-                    resultStates.append(self.getState())
 
             # Set the weights to the output of the learning rule
-            self.weights = self.learningRule(patterns, resultStates, self.weights)
+            self.weights = self.learningRule(patterns, resultStates, self.weights).copy()
+
+            if allTaskPatterns is not None:
+                acc,numStable=self.measureTaskPatternStability(allTaskPatterns)
+                taskAccuracies.append(acc)
+                numStableByEpoch.append(numStable)
 
             # If we are removing self connections, do that now
             if not self.selfConnections:
                 np.fill_diagonal(self.weights, 0)
+        # self.learningRule.numStatesLearned+=len(patterns)
+        print()
 
-            # Check if we are done with this epoch
-            # We are finished if the network has learned all patterns successfully
-            learnedAllPatterns = True
-            for pattern in patterns:
-                if self.learningRule.updateSteps==0: continue
-                self.setState(pattern)
-                try:
-                    self.relax()
-                except RelaxationException as e:
-                    continue
-                if not self.compareState(pattern): 
-                    learnedAllPatterns=False
-                    break
-
-            if learnedAllPatterns:
-                break
-            
+        if allTaskPatterns is not None:
+            return taskAccuracies, numStableByEpoch

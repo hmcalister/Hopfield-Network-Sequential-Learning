@@ -77,15 +77,19 @@ class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().setState(state)
 
-    def learnPatterns(self, patterns:List[np.ndarray])->None:
+    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None)->None:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
 
         Args:
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
+            allTaskPatterns (List[List[np.ndarray]] or None, optional): If given, will track the task pattern stability by epoch during training.
+                Passed straight to measureTaskPatternAccuracy. Defaults to None.
 
-        Returns: None
+        Returns: None or List[Tuple[List[np.float64], int]]]
+            If allTaskPatterns is None, returns None
+            If allTaskPatterns is present, returns a list over epochs of tuples. Tuples are of form (list of task accuracies, num stable learned patterns overall)
         """
 
-        return super().learnPatterns(patterns.copy())
+        return super().learnPatterns(patterns.copy(), allTaskPatterns)
