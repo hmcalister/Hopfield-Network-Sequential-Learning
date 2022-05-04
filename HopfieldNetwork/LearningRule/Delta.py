@@ -5,13 +5,18 @@ import numpy as np
 
 class Delta(AbstractLearningRule):
 
-    def __init__(self):
+    def __init__(self, epochs:int=10):
         """
         Create a new Delta Learning Rule
+
+        Args:
+            maxEpochs (int, optional): The epochs to train. Defaults to 10
         """
 
         self.updateSteps = 1
-        self.maxEpoches = 100
+        self.epochs = epochs
+
+        self.numStatesLearned = 0
 
     def __str__(self):
         return "Delta"
@@ -36,4 +41,7 @@ class Delta(AbstractLearningRule):
 
             weightChanges = weightChanges+0.5*np.outer(pattern-resultState, pattern)
 
-        return weights+weightChanges
+        # weights *=np.max(weights)
+        # weights += weightChanges
+        # weights /= np.max(weights)
+        return weights + weightChanges
