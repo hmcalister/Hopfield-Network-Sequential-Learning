@@ -21,7 +21,7 @@ class TaskPatternManager():
         self.nearbyMappings:List[Tuple[np.ndarray, np.ndarray]] = nearbyMappings
 
     def __str__(self):
-        return self.name
+        return f"{self.name}: {len(self.taskPatterns)} Patterns"
 
     def getTaskPatterns(self)->List[np.ndarray]:
         """
