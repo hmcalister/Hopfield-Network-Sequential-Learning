@@ -12,7 +12,7 @@ class MappedBinaryHebbian(AbstractLearningRule):
         """
 
         self.updateSteps = 0
-        self.maxEpoches = 1
+        self.epochs = 1
 
         self.numStatesLearned = 0
 

@@ -11,7 +11,7 @@ class Hebbian(AbstractLearningRule):
         """
 
         self.updateSteps = 0
-        self.maxEpoches = 1
+        self.epochs = 1
 
         self.numStatesLearned = 0
 
@@ -37,10 +37,10 @@ class Hebbian(AbstractLearningRule):
 
         if self.numStatesLearned==0:
             self.numStatesLearned+=len(patterns)
-            return weights+(1/len(patterns))*weightChanges
+            return weights+(1/self.numStatesLearned)*weightChanges
         else:
             weights = weights*self.numStatesLearned
-            weights += weightChanges
             self.numStatesLearned+=len(patterns)
+            weights += weightChanges
             weights /= self.numStatesLearned
             return weights
