@@ -5,3 +5,4 @@ from .Tanh import Tanh
 from .Sign import Sign
 from .BipolarHeaviside import BipolarHeaviside
 from .BinaryHeaviside import BinaryHeaviside
+from .MappedBinaryHeaviside import MappedBinaryHeaviside
