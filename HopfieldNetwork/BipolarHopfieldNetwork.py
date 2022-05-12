@@ -58,9 +58,10 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
             selfConnections=selfConnections
         )
 
+        self.networkName:str = "BipolarHopfieldNetwork"
+
     def __str__(self):
-        return ("Hopfield Network: BipolarHopfieldNetwork\n"
-            + super().__str__())
+        return f"Hopfield Network: {self.networkName}"
 
     def setState(self, state:np.ndarray):
         """
@@ -77,7 +78,8 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().setState(state.copy())
 
-    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None)->None:
+    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None,
+        heteroassociativeNoiseRatio:np.float64=0, inputNoise:str=None)->None:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
@@ -86,10 +88,16 @@ class BipolarHopfieldNetwork(AbstractHopfieldNetwork):
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
             allTaskPatterns (List[List[np.ndarray]] or None, optional): If given, will track the task pattern stability by epoch during training.
                 Passed straight to measureTaskPatternAccuracy. Defaults to None.
+            heteroassociativeNoiseRatio (np.float64, optional): The fraction of units to add a noise term to before calculating error.
+                Must be between 0 and 1. Defaults to 0.
+            inputNoise (str or None, optional): String on whether to apply input noise to the units before activation
+                - "Absolute": Apply absolute noise to the state, a Gaussian of mean 0 std 1
+                - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
+                - None: No noise. Default
 
         Returns: None or List[Tuple[List[np.float64], int]]]
             If allTaskPatterns is None, returns None
             If allTaskPatterns is present, returns a list over epochs of tuples. Tuples are of form (list of task accuracies, num stable learned patterns overall)
         """
 
-        return super().learnPatterns(patterns.copy(), allTaskPatterns)
+        return super().learnPatterns(patterns.copy(), allTaskPatterns, heteroassociativeNoiseRatio, inputNoise)
