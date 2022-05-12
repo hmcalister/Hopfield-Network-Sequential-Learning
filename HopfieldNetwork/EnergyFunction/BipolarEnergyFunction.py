@@ -11,6 +11,7 @@ class BipolarEnergyFunction(AbstractEnergyFunction):
     def __call__(self, state:np.ndarray, weights:np.ndarray)->np.ndarray:
         """
         Given a state (a vector of units) and weights, calculate the energy of each unit
+        If energy are negative, unit is stable
 
         Args:
             state (np.ndarray): The vector of units to calculate the energies of. Must be of size N
@@ -20,8 +21,11 @@ class BipolarEnergyFunction(AbstractEnergyFunction):
             np.ndarray: The vector of energies corresponding to the units in the state
         """
 
+        # Calculate the next state of all units in the network
         nextState = np.dot(weights, state)
-        energies = nextState*state
+
+        # Compare the next state to this state, if they are different result is positive as unit is unstable
+        energies = -1*nextState*state
         return energies
 
     def __str__(self):
