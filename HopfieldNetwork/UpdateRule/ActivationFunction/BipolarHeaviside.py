@@ -13,7 +13,8 @@ class BipolarHeaviside(AbstractActivationFunction):
 
     def __call__(self, state:ndarray)->ndarray:
         
-        out=array(heaviside(state,1))
+        # BipolarHeaviside heavisides and maps 0 to 0, then maps all 0 to -1
+        out=array(heaviside(state,0))
         out[out==0] = -1
         return out
 

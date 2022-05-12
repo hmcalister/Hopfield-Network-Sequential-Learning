@@ -11,6 +11,7 @@ class Linear(AbstractActivationFunction):
 
     def __call__(self, state:ndarray)->ndarray:
         
+        # Linear simply returns state
         return state
 
     def __str__(self):

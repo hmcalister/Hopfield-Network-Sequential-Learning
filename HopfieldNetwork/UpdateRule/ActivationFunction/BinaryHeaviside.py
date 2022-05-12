@@ -14,7 +14,8 @@ class BinaryHeaviside(AbstractActivationFunction):
 
     def __call__(self, state:ndarray)->ndarray:
         
-        out=array(heaviside(state-0.5,0))
+        # Binary Heaviside first maps 0.5 to 0 then performs heaviside, with 0 being mapped to 0
+        out=array(heaviside(state,0))
         return out
 
     def __str__(self):

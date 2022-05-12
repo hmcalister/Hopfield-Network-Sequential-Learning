@@ -12,6 +12,7 @@ class Sigmoid(AbstractActivationFunction):
 
     def __call__(self, state:ndarray)->ndarray:
         
+        # Calculate the sigmoid of a state
         return array(1/(1+exp(-state)))
 
     def __str__(self):
