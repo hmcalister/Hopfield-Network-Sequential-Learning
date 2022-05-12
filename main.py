@@ -17,9 +17,9 @@ energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 learningRule = HopfieldNetwork.LearningRule.Delta(epochs=100)
-allowableLearningStateError = 0
+allowableLearningStateError = 0.001
 
-inputNoise = "Absolute"
+inputNoise = None
 heteroassociativeNoiseRatio = 0.05
 
 network = HopfieldNetwork.GeneralHopfieldNetwork(
@@ -71,13 +71,13 @@ fileNameBasis = f"{network.N}Bipolar-{network.learningRule}-{inputNoise}Input{he
 plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=[network.learningRule.epochs*i for i in range(len(tasks))], 
     title=f"{titleBasis}\n Stability by Task",
     legend=[str(task) for task in tasks], figsize=(12,6),
-    fileName=f"graphs/{fileNameBasis}-StabilityByTask.png"
+    # fileName=f"graphs/{fileNameBasis}-StabilityByTask.png"
     )
 
 plotTotalStablePatterns(numStableOverEpochs, N, hebbianMaximumCapacity=network.getHebbianMaxRatio(),
     title=f"{titleBasis}\n Total Stable Patterns", 
     figsize=(12,6),
-    fileName=f"graphs/{fileNameBasis}-TotalStablePatterns.png"
+    # fileName=f"graphs/{fileNameBasis}-TotalStablePatterns.png"
     )
 
 saveDataAsJSON(f"data/{fileNameBasis}.json", 

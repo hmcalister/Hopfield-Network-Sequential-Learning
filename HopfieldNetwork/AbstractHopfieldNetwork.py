@@ -392,10 +392,11 @@ class AbstractHopfieldNetwork(ABC):
             resultStates = []
 
             if self.learningRule.epochs>1:
+                # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
                 if len(taskAccuracies)>0:
-                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs} : {taskAccuracies[-1]}", end="\r")
+                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
                 else:
-                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs}", end="\r")
+                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs}"+" "*80, end="\r")
 
             # If the learning rule needs the current network predictions (e.g. delta)
             if self.learningRule.updateSteps>0:
