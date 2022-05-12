@@ -24,7 +24,6 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
 
     def __init__(self, 
                 N:int,
-                learningRule:str="MappedHebbian",
                 weights:np.ndarray=None,
                 selfConnections:bool=False):
         """
@@ -33,14 +32,13 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
 
         ActivationFunction is BinaryHeaviside.
         UpdateRule is AsynchList.
-        LearningRule is Hebbian or MappedHebbian.
+        LearningRule is Hebbian.
         EnergyFunction is BinaryEnergy.
         
         If weights is supplied, the network weights are set to the supplied weights.
 
         Args:
             N (int): The size of the network, how many units to have.
-            learningRule (str, optional): The learning rule to use for this network. Can be either "Hebbian" or "MappedHebbian" (default).
             weights (np.ndarray, optional): The weights of the network, if supplied. Intended to be used to recreate a network for testing.
                 If supplied, must be a 2-D matrix of float64 with size N*N. If None, random weights are created uniformly around 0.
                 Defaults to None.
@@ -51,27 +49,20 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
             ValueError: If the given weight matrix is not N*N and not None.
         """
 
-        if learningRule=="Hebbian":
-            learningRule=Hebbian()
-        elif learningRule=="MappedHebbian":
-            learningRule=MappedBinaryHebbian()
-        else:
-            print("ERROR: LEARNING RULE NOT KNOWN")
-            exit()
-
         super().__init__(
             N=N,
             energyFunction=BinaryEnergyFunction(),
             activationFunction=BinaryHeaviside(),
             updateRule=AsynchronousList(BinaryHeaviside()),
-            learningRule=learningRule,
+            learningRule=Hebbian(),
             weights=weights,
             selfConnections=selfConnections
         )
 
+        self.networkName:str = "BinaryHopfieldNetwork"
+
     def __str__(self):
-        return ("Hopfield Network: BinaryHopfieldNetwork\n"
-            + super().__str__())
+        return f"Hopfield Network: {self.networkName}"
 
     def setState(self, state:np.ndarray):
         """
@@ -101,9 +92,13 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
             bool: True if the given state is the same as the network state, false otherwise
         """
 
+        # Notice that this comparision requires a special negation
+        # -1*state would not map a binary state correctly
+        # -1*state+1 maps 1 to 0 and 0 to 1 correctly!
         return np.array_equal(self.getState(), state) or np.array_equal(-1*self.getState()+1, state)
 
-    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None)->None:
+    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None,
+        heteroassociativeNoiseRatio:np.float64=0, inputNoise:str=None)->None:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
@@ -112,10 +107,16 @@ class BinaryHopfieldNetwork(AbstractHopfieldNetwork):
             patterns (List[np.ndarray]): The patterns to learn. Each np.ndarray must be a float64 vector of length N (to match the state)
             allTaskPatterns (List[List[np.ndarray]] or None, optional): If given, will track the task pattern stability by epoch during training.
                 Passed straight to measureTaskPatternAccuracy. Defaults to None.
+            heteroassociativeNoiseRatio (np.float64, optional): The fraction of units to add a noise term to before calculating error.
+                Must be between 0 and 1. Defaults to 0.
+            inputNoise (str or None, optional): String on whether to apply input noise to the units before activation
+                - "Absolute": Apply absolute noise to the state, a Gaussian of mean 0 std 1
+                - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
+                - None: No noise. Default
 
         Returns: None or List[Tuple[List[np.float64], int]]]
             If allTaskPatterns is None, returns None
             If allTaskPatterns is present, returns a list over epochs of tuples. Tuples are of form (list of task accuracies, num stable learned patterns overall)
         """
 
-        return super().learnPatterns(patterns.copy(), allTaskPatterns)
+        return super().learnPatterns(patterns.copy(), allTaskPatterns, heteroassociativeNoiseRatio, inputNoise)
