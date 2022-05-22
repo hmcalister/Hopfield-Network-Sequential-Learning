@@ -13,12 +13,12 @@ patternManager = PatternManager.SequentialLearningPatternManager(N, mappingFunct
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
-# learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=100, trainUntilStable=False)
+learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=100, trainUntilStable=False)
 # learningRule = HopfieldNetwork.LearningRule.Hebbian()
-learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=1, fracRehearse=0.2, trainUntilStable=False)
+# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=1, fracRehearse=0.2, trainUntilStable=False)
 allowableLearningStateError = 0.005
 
-inputNoise = None
+inputNoise = "Absolute"
 heteroassociativeNoiseRatio = 0.05
 
 network = HopfieldNetwork.GeneralHopfieldNetwork(
@@ -31,7 +31,7 @@ network = HopfieldNetwork.GeneralHopfieldNetwork(
 )
 
 tasks = patternManager.createTasks(
-    numTasks=10,
+    numTasks=4,
     numPatternsPerTask=20
 )
 
