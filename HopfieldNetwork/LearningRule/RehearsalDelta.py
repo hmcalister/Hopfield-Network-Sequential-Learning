@@ -40,25 +40,24 @@ class RehearsalDelta(AbstractLearningRule):
     def __str__(self):
         return f"RehearsalDelta-{self.maxEpochs} Max Epochs {self.fracRehearse} FracRehearse"
 
-    def __call__(self, patterns:List[np.ndarray], resultStates:List[np.ndarray], weights:np.ndarray)->np.ndarray:
+    def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
         Learn a set of patterns and return the weights
 
         Args:
             patterns (List[np.ndarray]): A list of patterns to learn
-            resultStates (List[np.ndarray]): The relaxed states of the network for each pattern
-            weights (np.ndarray): The current weights of the network
 
         Returns:
             np.ndarray: The new weights of the network after learning
         """
 
         # The weights changes start as a zero matrix
-        weightChanges = np.zeros_like(weights)
+        weights = self.network.weights
+        weightChanges = np.zeros_like(self.network.weights)
         for i in range(len(patterns)):
             # Get pattern i and the resultState i
-            pattern = patterns[i]
-            resultState = resultStates[i]
+            pattern = patterns[i].copy()
+            resultState = self.findRelaxedState(pattern)
 
             # The weight changes of this pattern is the outer product of
             # The difference of pattern and result state and this pattern

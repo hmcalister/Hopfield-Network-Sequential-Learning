@@ -157,17 +157,13 @@ class AbstractHopfieldNetwork(ABC):
         if state.dtype != np.float64: raise ValueError()
         self.state = state.copy()
 
-    def relax(self, maxSteps:int=None, inputNoise:str=None)->np.ndarray:
+    def relax(self, maxSteps:int=None)->np.ndarray:
         """
         From the current state of the network, update until a stable state is found. Return this stable state.
 
         Args:
             maxSteps (int, optional): The maximum number of steps to update for until stopping. If None then set to the max steps of the update rule.
                 Defaults to None
-            inputNoise (str or None, optional): String on whether to apply input noise to the units before activation
-                - "Absolute": Apply absolute noise to the state, a Gaussian of mean 0 std 1
-                - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
-                - None: No noise. Default
 
         Returns:
             np.ndarray: The final state of the network after relaxing
@@ -177,7 +173,7 @@ class AbstractHopfieldNetwork(ABC):
         """
 
         # Find the max steps, either from the arg or from the update rule
-        if maxSteps==None:
+        if maxSteps is None:
             maxSteps=self.updateRule.MAX_STEPS
 
         # Set the current step to 0 to count up until max steps
@@ -190,30 +186,24 @@ class AbstractHopfieldNetwork(ABC):
             if currentStep >= maxSteps:
                 raise RelaxationException()
             # Step forward one step
-            self.state = self._updateStep(inputNoise)
+            self.state = self._updateStep()
             currentStep+=1
         
         # We must have reached a stable state, so we can return this state
         return self.state.copy()
 
-    def _updateStep(self, inputNoise:str=None)->np.ndarray:
+    def _updateStep(self)->np.ndarray:
         """
         Perform a single update step from the current state to the next state.
         This method returns the next network state, so to affect the change 
         ensure you set the network state to the output of this function.
         This method depends on the update rule selected and activation function.
 
-        Args:
-            inputNoise (str or None, optional): String on whether to apply input noise to the units before activation
-                - "Absolute": Apply absolute noise to the state, a Gaussian of mean 0 std 1
-                - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
-                - None: No noise. Default
-
         Returns:
             np.ndarray: The result of a single update step from the current state
         """
 
-        return self.updateRule(self.state, self.weights, inputNoise)
+        return self.updateRule(self.state, self.weights)
 
     def networkEnergy(self)->np.float64:
         """
@@ -385,6 +375,13 @@ class AbstractHopfieldNetwork(ABC):
         taskAccuracies = []
         numStableByEpoch = []
 
+        # Give the learning rule heteroassociative and input noise information
+        self.learningRule.heteroassociativeNoiseRatio = heteroassociativeNoiseRatio
+        self.learningRule.setNetworkReference(self)
+        
+        # Give the update rule the inputNoise information
+        self.updateRule.setInputNoiseType(inputNoise)
+
         # print(f"{heteroassociativeNoiseRatio=}\n{inputNoise=}")
 
         # Ensure patterns are correct type and shape
@@ -397,8 +394,8 @@ class AbstractHopfieldNetwork(ABC):
         while currentTaskEpochs < (self.learningRule.maxEpochs):
             currentTaskEpochs+=1
             self.epochs+=1
-            resultStates = []
 
+            # Print some information for debugging
             if self.learningRule.maxEpochs>1:
                 # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
                 if len(taskAccuracies)>0 and len(allTaskPatterns)<20:
@@ -406,26 +403,24 @@ class AbstractHopfieldNetwork(ABC):
                 else:
                     print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
 
-            # If the learning rule needs the current network predictions (e.g. delta)
-            if self.learningRule.updateSteps>0:
-                # Calculate that prediction for each pattern and store it
-                for pattern in patterns:
-                    self.setState(pattern)
-                    try:
-                        self.relax(self.learningRule.updateSteps, inputNoise)
-                    except RelaxationException as e:
-                        pass
-                    if heteroassociativeNoiseRatio>0:
-                        self.state = self.invertStateUnits(self.state, heteroassociativeNoiseRatio)
-                    resultStates.append(self.getState())
+
+            # Set the learning and update rule noise information
+            self.learningRule.setHeteroassociativeNoiseRatio(heteroassociativeNoiseRatio)
+            self.updateRule.setInputNoiseType(inputNoise)
 
             # Set the weights to the output of the learning rule
-            self.weights = self.learningRule(patterns, resultStates, self.weights).copy()
+            self.weights = self.learningRule(patterns).copy()
+
+            # Clear the noise information
+            self.learningRule.clearHeteroassociativeNoiseRatio()
+            self.updateRule.clearInputNoiseType()
             
+
             # If we are removing self connections, do that now
             if not self.selfConnections:
                 np.fill_diagonal(self.weights, 0)
 
+            
             if allTaskPatterns is not None:
                 acc,numStable=self.measureTaskPatternStability(allTaskPatterns)
                 taskAccuracies.append(acc)
@@ -454,6 +449,11 @@ class AbstractHopfieldNetwork(ABC):
                     break
 
         print()
+
+        # Give the learning rule heteroassociative and input noise information
+        self.learningRule.heteroassociativeNoiseRatio = heteroassociativeNoiseRatio
+        # Give the update rule the inputNoise information
+        self.updateRule.inputNoise = inputNoise
 
         if allTaskPatterns is not None:
             return taskAccuracies, numStableByEpoch
