@@ -16,17 +16,13 @@ class AsynchronousPermutation(AbstractUpdateRule):
         super().__init__(activationFunction)
         self.energyFunction = energyFunction
 
-    def __call__(self, currentState:np.ndarray, weights:np.ndarray, inputNoise:str=None)->np.ndarray:
+    def __call__(self, currentState:np.ndarray, weights:np.ndarray)->np.ndarray:
         """
         Find the next state from a current state and weights
 
         Args:
             currentState (np.ndarray): The current state of the network. Must have dimension N and type float64
             weights (np.ndarray): The weights of the network. Must have dimension N*N and type float64
-            inputNoiseRatio (str or None, optional): String on whether to apply input noise to the units before activation
-                - "Absolute": Apply absolute noise to the state, a Gaussian of mean 0 std 1
-                - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
-                - None: No noise. Default
 
         Returns:
             np.ndarray: The next state of the network
@@ -46,10 +42,7 @@ class AsynchronousPermutation(AbstractUpdateRule):
         
         # For each index to be updated
         for updateIndex in updateOrder:
-            if inputNoise is None:
-                noiseVector=0
-            else:
-                noiseVector = self.getInputNoise(inputNoise, np.dot(weights, nextState))
+            noiseVector = self.inputNoise(nextState)
 
             # Update that index
             nextState[updateIndex] = self.activationFunction(

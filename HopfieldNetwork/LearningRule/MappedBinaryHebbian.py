@@ -5,7 +5,7 @@ import numpy as np
 
 class MappedBinaryHebbian(AbstractLearningRule):
 
-    def __init__(self):
+    def __init__(self, trainUntilStable:bool=True):
         """
         Create a new MappedBinaryHebbian Learning Rule
         This maps the binary field to the bipolar field, allowing for negative weight updates
@@ -17,25 +17,27 @@ class MappedBinaryHebbian(AbstractLearningRule):
 
         # The hebbian does use the states used tracker
         self.numStatesLearned = 0
+        # Flag to determine if we should train until stable, defaults to True
+        self.trainUntilStable = trainUntilStable
 
     def __str__(self):
         return "MappedBinaryHebbian"
 
-    def __call__(self, patterns:List[np.ndarray], resultStates:List[np.ndarray], weights:np.ndarray)->np.ndarray:
+    def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
         Learn a set of patterns and return the weights
 
         Args:
             patterns (List[np.ndarray]): A list of patterns to learn
-            resultStates (List[np.ndarray]): The relaxed states of the network for each pattern
-            weights (np.ndarray): The current weights of the network
 
         Returns:
             np.ndarray: The new weights of the network after learning
         """
 
-        # weight changes start off as zero matrix
-        weightChanges = np.zeros_like(weights)
+        # Weight changes start as zero matrix
+        weights = self.network.weights
+        weightChanges = np.zeros_like(self.network.weights)
+
         # Calculate an update for each pattern
         for pattern in patterns:
             # Mapping Binary to Bipolar requires 2*x-1, maps 1 to 1 and 0 to -1

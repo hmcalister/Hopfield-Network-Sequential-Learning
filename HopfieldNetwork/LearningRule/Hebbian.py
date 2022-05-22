@@ -16,27 +16,26 @@ class Hebbian(AbstractLearningRule):
 
         # Hebbian does use numStatesLearned
         self.numStatesLearned = 0
-
-
+        # Flag to determine if we should train until stable, defaults to True
+        self.trainUntilStable = trainUntilStable
 
     def __str__(self):
         return "Hebbian"
 
-    def __call__(self, patterns:List[np.ndarray], resultStates:List[np.ndarray], weights:np.ndarray)->np.ndarray:
+    def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
         Learn a set of patterns and return the weights
 
         Args:
             patterns (List[np.ndarray]): A list of patterns to learn
-            resultStates (List[np.ndarray]): The relaxed states of the network for each pattern
-            weights (np.ndarray): The current weights of the network
 
         Returns:
             np.ndarray: The new weights of the network after learning
         """
 
         # Weight changes start as zero matrix
-        weightChanges = np.zeros_like(weights)
+        weights = self.network.weights
+        weightChanges = np.zeros_like(self.network.weights)
 
         # For every pattern calculate a weight change
         for pattern in patterns:
