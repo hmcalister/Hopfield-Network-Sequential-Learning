@@ -13,9 +13,11 @@ class AbstractLearningRule(ABC):
         # Define how many update steps are needed for each pattern
         self.updateSteps = 0
         # Define the maximum number of epochs to learn for
-        self.epochs = 0
+        self.maxEpochs = 0
         # Track how many states have been learned so far
         self.numStatesLearned = 0
+        # Flag to determine if we should train until stable, defaults to True
+        self.trainUntilStable = True
         pass
 
     @abstractmethod
