@@ -5,7 +5,7 @@ import numpy as np
 
 class Delta(AbstractLearningRule):
 
-    def __init__(self, epochs:int=10):
+    def __init__(self, maxEpochs:int=100, trainUntilStable:bool=True):
         """
         Create a new Delta Learning Rule
         Delta rule calculates the network state after a single update step
@@ -13,6 +13,8 @@ class Delta(AbstractLearningRule):
 
         Args:
             maxEpochs (int, optional): The epochs to train. Defaults to 10
+            trainUntilStable (bool, optional): Flag to train current pattern until stable.
+                Defaults to True, train the current pattern until stable.
         """
 
         # Delta rule requires a single update step 
@@ -20,13 +22,16 @@ class Delta(AbstractLearningRule):
 
         # The number of epochs to run for is set by constructor argument
         # Notice this can take a very long time, and usually Delta converges very quickly
-        self.epochs = epochs
+        self.maxEpochs = maxEpochs
 
         # Currently, numStatesLearned unused by Delta
         self.numStatesLearned = 0
 
+        # Flag to determine if we should train until stable, defaults to True
+        self.trainUntilStable = trainUntilStable
+
     def __str__(self):
-        return f"Delta-{self.epochs} Epochs"
+        return f"Delta-{self.maxEpochs} Max Epochs"
 
     def __call__(self, patterns:List[np.ndarray], resultStates:List[np.ndarray], weights:np.ndarray)->np.ndarray:
         """

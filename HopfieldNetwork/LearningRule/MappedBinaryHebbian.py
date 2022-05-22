@@ -13,7 +13,7 @@ class MappedBinaryHebbian(AbstractLearningRule):
 
         # The hebbian does not use result states or multiple epochs
         self.updateSteps = 0
-        self.epochs = 1
+        self.maxEpochs = 1
 
         # The hebbian does use the states used tracker
         self.numStatesLearned = 0
