@@ -79,6 +79,9 @@ class AbstractHopfieldNetwork(ABC):
         self.selfConnections = selfConnections
         self.allowableLearningStateError = allowableLearningStateError
 
+        # The total number of epochs we have trained for
+        self.epochs = 0
+
         self.state:np.ndarray = np.ones(N)
 
     @abstractmethod
@@ -371,32 +374,37 @@ class AbstractHopfieldNetwork(ABC):
                 - "Relative": Apply relative noise to the state, a Gaussian of mean and std determined by the state vector
                 - None: No noise. Default
 
-        Returns: None or List[Tuple[List[np.float64], int]]]
+        Returns: None or Tuple[ List[List[np.float64]], List[int] ]
             If allTaskPatterns is None, returns None
-            If allTaskPatterns is present, returns a list over epochs of tuples. Tuples are of form (list of task accuracies, num stable learned patterns overall)
+            If allTaskPatterns is present, returns a Tuple 
+                The first element is a list of taskAccuracies over epochs (2-D array)
+                The second element is a list of numStablePatterns by epoch
         """
 
         # If allTaskPatterns given we need to track these...
         taskAccuracies = []
         numStableByEpoch = []
 
-        print(f"{heteroassociativeNoiseRatio=}\n{inputNoise=}")
+        # print(f"{heteroassociativeNoiseRatio=}\n{inputNoise=}")
 
         # Ensure patterns are correct type and shape
         for pattern in patterns:
             if pattern.shape != (self.N,): raise ValueError()
             if pattern.dtype != np.float64: raise ValueError()
         
+        currentTaskEpochs = 0
         # Loop until we reach the maximum number of epochs in the learning rule
-        for epoch in range(self.learningRule.epochs):
+        while currentTaskEpochs < (self.learningRule.maxEpochs):
+            currentTaskEpochs+=1
+            self.epochs+=1
             resultStates = []
 
-            if self.learningRule.epochs>1:
+            if self.learningRule.maxEpochs>1:
                 # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
-                if len(taskAccuracies)>0:
-                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
+                if len(taskAccuracies)>0 and len(allTaskPatterns)<20:
+                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
                 else:
-                    print(f"Epoch: {epoch+1}/{self.learningRule.epochs}"+" "*80, end="\r")
+                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
 
             # If the learning rule needs the current network predictions (e.g. delta)
             if self.learningRule.updateSteps>0:
@@ -408,7 +416,7 @@ class AbstractHopfieldNetwork(ABC):
                     except RelaxationException as e:
                         pass
                     if heteroassociativeNoiseRatio>0:
-                        self.state = self.invertState(self.state, heteroassociativeNoiseRatio)
+                        self.state = self.invertStateUnits(self.state, heteroassociativeNoiseRatio)
                     resultStates.append(self.getState())
 
             # Set the weights to the output of the learning rule
@@ -423,13 +431,34 @@ class AbstractHopfieldNetwork(ABC):
                 taskAccuracies.append(acc)
                 numStableByEpoch.append(numStable)
 
-        # self.learningRule.numStatesLearned+=len(patterns)
+            # If we are only training until stable
+            if self.learningRule.trainUntilStable:
+                # We see if all of our current patterns are stable, then carry on
+                learnedAllPatterns = True
+                for pattern in patterns:
+                    # Set the network to the current pattern
+                    self.setState(pattern)
+                    try:
+                        self.relax(1)
+                    except RelaxationException as e:
+                        # More than likely we will encounter a relaxation error, this is fine
+                        pass
+
+                    # If the relaxed state is the same as the pattern, we have a stable state
+                    if not self.compareState(pattern, self.allowableLearningStateError):
+                        # If we are not stable on even a single pattern, we must carry on
+                        learnedAllPatterns = False
+                        break
+                # If we HAVE learned all the patterns, we can stop training!
+                if learnedAllPatterns:
+                    break
+
         print()
 
         if allTaskPatterns is not None:
             return taskAccuracies, numStableByEpoch
 
-    def invertState(self, state:np.ndarray, inverseRatio:np.float64)->np.ndarray:
+    def invertStateUnits(self, state:np.ndarray, inverseRatio:np.float64)->np.ndarray:
         """
         Invert a number of units (determined by inverse ratio) in the given state and return it
         Inverse is done by multiplying the units by -1 
