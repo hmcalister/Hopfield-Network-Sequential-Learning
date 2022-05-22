@@ -19,6 +19,8 @@ class TaskPatternManager():
         self.name:str = name
         self.taskPatterns:List[np.ndarray] = taskPatterns
         self.nearbyMappings:List[Tuple[np.ndarray, np.ndarray]] = nearbyMappings
+        # The final epoch this task was trained on
+        self.startEpoch:int = 0
 
     def __str__(self):
         return f"{self.name}: {len(self.taskPatterns)} Patterns"
