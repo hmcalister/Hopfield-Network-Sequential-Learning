@@ -46,7 +46,7 @@ class SequentialLearningPatternManager():
         return np.array_equal(pattern1, pattern2) or np.array_equal(-1*pattern1, pattern2)
 
 
-    def _generatePattern(self)->np.ndarray:
+    def generatePattern(self)->np.ndarray:
         """
         Generate a new pattern of size self.size from a vector of gaussian random variables passed through the mapping function
 
@@ -80,7 +80,7 @@ class SequentialLearningPatternManager():
         indices = indices[:numUnits]
 
         # Use a donor pattern to get new values for indices
-        donorPattern = self._generatePattern()
+        donorPattern = self.generatePattern()
         for index in indices:
             nearbyPattern[index] = donorPattern[index]
 
@@ -89,7 +89,50 @@ class SequentialLearningPatternManager():
 
         return nearbyPattern
 
-    def createTasks(self, numTasks:int, numPatternsPerTask:int, numNearbyMappingsPerPattern:int=0)->List[TaskPatternManager]:
+    def createTasks(self, numPatternsByTask:List[int]) -> List[TaskPatternManager]:
+        """
+        Create a number of tasks to be learned sequentially by a Hopfield Network. This method takes a list of integers which
+        represents the number of patterns in each task. The number of tasks created is equal to the length of numPatternsByTask.
+
+        Args:
+            numPatternsByTask (List[int]): A list of integers, representing the number of patterns in each task
+
+        Returns:
+            List[TaskPatternManager]: A list of TaskPatternManagers, with each manager having a corresponding number of tasks
+                equal to the respective index in numPatternsByTask.
+        """
+
+        self.numTasks:int = len(numPatternsByTask)
+        self.numPatternsByTask = numPatternsByTask
+        self.numPatternsPerTask:int = None
+        self.numNearbyMappingsPerPattern:int = None
+
+        allTaskPatterns:List[np.ndarray] = self._createTaskPatterns(sum(numPatternsByTask))
+
+        startIndex = 0
+        self.taskPatternManagers:List[TaskPatternManager] = []
+        for taskIndex in range(self.numTasks):
+            # print(f"{startIndex} : {startIndex+self.numPatternsByTask[taskIndex]}")
+            taskPatterns = allTaskPatterns[startIndex : startIndex+self.numPatternsByTask[taskIndex]]
+            
+            self.taskPatternManagers.append(TaskPatternManager(
+                name=f"Task_{taskIndex}",
+                taskPatterns=taskPatterns.copy(),
+                nearbyMappings=[]
+            ))
+
+            startIndex += self.numPatternsByTask[taskIndex]
+            
+        # for taskIndex in self.taskPatternManagers:
+        #     print(f"{taskIndex}: {taskIndex.taskPatterns}")
+        # print()
+
+        self.allTaskPatterns = [task.taskPatterns for task in self.taskPatternManagers]
+
+        return self.taskPatternManagers
+
+
+    def createTasksVerbose(self, numTasks:int, numPatternsPerTask:int, numNearbyMappingsPerPattern:int=0)->List[TaskPatternManager]:
         """
         Create a number of tasks to be learned sequentially by a Hopfield network. Each task will have
         (numPatternsPerTask) patterns, and each pattern will have (numNearbyMappingsPerPattern) nearby mappings to test.
@@ -116,14 +159,14 @@ class SequentialLearningPatternManager():
 
         # self.allTaskPatterns is organized in a specific way: all patterns for one task are contiguous
         # Task i has patterns from [self.numTasks*i:self.numTasks*(i+1)]
-        self.allTaskPatterns:List[np.ndarray] = self._createTaskPatterns(self.numTasks*self.numPatternsPerTask)
+        allTaskPatterns:List[np.ndarray] = self._createTaskPatterns(self.numTasks*self.numPatternsPerTask)
         # self.allNearbyMappings is organized in a specific way: all nearbyMappings for one task are contiguous
         # Task i has nearby mappings from [self.numPatternsPerTask*self.numNearbyMappingsPerPattern*i:self.numPatternsPerTask*self.numNearbyMappingsPerPattern*(i+1)]
         self.allNearbyMappings:List[Tuple[np.ndarray, np.ndarray]] = self._createNearbyMappings(self.numNearbyMappingsPerPattern)
 
         self.taskPatternManagers:List[TaskPatternManager] = []
         for task in range(self.numTasks):
-            taskPatterns = self.allTaskPatterns[self.numPatternsPerTask*task : self.numPatternsPerTask*(task+1)]
+            taskPatterns = allTaskPatterns[self.numPatternsPerTask*task : self.numPatternsPerTask*(task+1)]
             nearbyMappings = self.allNearbyMappings[self.numPatternsPerTask*self.numNearbyMappingsPerPattern*task : 
                     self.numPatternsPerTask*self.numNearbyMappingsPerPattern*(task+1)]
             self.taskPatternManagers.append(TaskPatternManager(
@@ -135,6 +178,8 @@ class SequentialLearningPatternManager():
             # for task in self.taskPatternManagers:
             #     print(f"{task}: {task.taskPatterns}")
             # print()
+
+        self.allTaskPatterns = [task.taskPatterns for task in self.taskPatternManagers]
 
         return self.taskPatternManagers
 
@@ -169,7 +214,7 @@ class SequentialLearningPatternManager():
                 raise ValueError()
             
             # Generate a new pattern
-            currPattern = self._generatePattern()
+            currPattern = self.generatePattern()
 
             # Check if the pattern is unique
             # If the pattern is not unique, restart the loop
@@ -259,45 +304,6 @@ class SequentialLearningPatternManager():
         self.nearbyMappings = nearbyMappings
         return self.nearbyMappings
 
-    def createRandomMappings(self, numRandom:int, learnedPatterns:List[np.ndarray])->List[Tuple[np.ndarray, np.ndarray]]:
-        """
-        Create a number of patterns that are random and check what pattern we expect them to map to in the given learned patterns
-        Returns a list with key value pairs (randomPattern, desiredLearnedPattern)
-
-        Args:
-            numRandom (int): The number of random patterns to make
-            learnedPatterns (List[np.ndarray]): The list of learned patterns of the network so far
-
-        Returns:
-            List[Tuple[np.ndarray, nd.ndarray]]: A list of key value pairs of the form (randomPattern, desiredLearnedPattern)
-        """
-
-        randomMappings = []
-
-        while len(randomMappings) < numRandom:
-            # Create a new random pattern
-            currPattern = self._generatePattern()
-
-            distances = np.array([self.patternDistanceFunction(currPattern, pattern) for pattern in learnedPatterns])
-            minDistance = np.min(distances)
-            # We check that the min distance is unique
-            # We find all indices that are less than or equal to the minDistance
-            # Then sum the count of these indices
-            # This sum should be exactly one
-            if np.sum(distances <= minDistance) > 1:
-                continue
-
-            # We now know that there is a unique minimum distance
-            # Let's find the taskPattern that it corresponds to
-            minIndex = np.argmin(minDistance)
-            minTaskPattern = learnedPatterns[minIndex]
-
-            # Finally, set the key value pair
-            randomMappings.append( (currPattern.copy(), minTaskPattern) )
-
-        self.randomMappings = randomMappings
-        return self.randomMappings
-            
     def createRandomMappings(self, numRandom:int, learnedPatterns:List[np.ndarray], changeRatio:np.float64)->List[Tuple[np.ndarray, np.ndarray]]:
         """
         Create a number of random patterns that are nearby the given pattterns
