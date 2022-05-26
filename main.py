@@ -4,73 +4,101 @@ from HopfieldUtils import *
 import numpy as np
 
 np.set_printoptions(precision=2)
-N = 1000
+N = 100
 
+# HYPERPARAMS ---------------------------------------------------------------------------------------------------------
+# Pattern generation params ---------------------------------------------------
 mappingFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 patternManager = PatternManager.SequentialLearningPatternManager(N, mappingFunction)
 
-
+# Network params---------------------------------------------------------------
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
-learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=100, trainUntilStable=False)
+
+
+
 # learningRule = HopfieldNetwork.LearningRule.Hebbian()
-# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=1, fracRehearse=0.2, trainUntilStable=False)
-allowableLearningStateError = 0.005
+# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=1, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
+# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=1, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
 
-inputNoise = "Absolute"
-heteroassociativeNoiseRatio = 0.05
+# learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=100)
+# learningRule = HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=100, numRehearse=3, updateRehearsalStatesFreq="Epoch")
+learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=10, numRehearse=3, keepPreviousStableStates=False, 
+    numPseudorehearsalSamples=32, updateRehearsalStatesFreq="Epoch")
 
+# Network noise/error params --------------------------------------------------
+allowableLearningStateError = 0.01
+inputNoise = None
+heteroassociativeNoiseRatio = 0
+
+# SETUP ---------------------------------------------------------------------------------------------------------------
+# Create network
 network = HopfieldNetwork.GeneralHopfieldNetwork(
     N=N,
     energyFunction=energyFunction,
     activationFunction=activationFunction,
     updateRule=updateRule,
     learningRule=learningRule,
-    allowableLearningStateError=allowableLearningStateError
+    allowableLearningStateError=allowableLearningStateError,
+    patternManager=patternManager
 )
 
+# Create tasks
+numPatternsByTask = [20]
+numPatternsByTask.extend([1 for i in range(10)])
+# numPatternsByTask.extend([1 for i in range(10)])
 tasks = patternManager.createTasks(
-    numTasks=4,
-    numPatternsPerTask=20
+    numPatternsByTask=numPatternsByTask
 )
 
+# We have currently seen no patterns
 seenPatterns = []
-taskPatternStabilities = None
+# We declare an empty matrix of stabilities
+# First index is epoch (currently 0) second is task index
+taskPatternStabilities = np.empty(shape=(0, len(tasks)))
+# And we track stability over epochs
 numStableOverEpochs = []
 
+# Print network details
 print(network.getNetworkDescriptionString())
 print()
 
+# TRAINING ------------------------------------------------------------------------------------------------------------
 for task in tasks:
-    print(f"{task}")
     seenPatterns.extend(task.getTaskPatterns())
+    
+    print(f"{task}")
     # print(f"Task Patterns: {task.taskPatterns}")
     # print(f"{seenPatterns=}")
 
-    # randomMappings = patternManager.createRandomMappings(100, seenPatterns, changeRatio=0.05)
-
+    # This task has started, note this
     task.startEpoch = network.epochs
-    accuracies, numStable = network.learnPatterns(task.taskPatterns, [task.taskPatterns for task in patternManager.taskPatternManagers], 
-        heteroassociativeNoiseRatio=heteroassociativeNoiseRatio, inputNoise=inputNoise)
-    # print(network.getWeights())
+    # Learn the patterns
+    accuracies, numStable = network.learnPatterns(
+        patterns=task.taskPatterns, 
+        allTaskPatterns=patternManager.allTaskPatterns, 
+        heteroassociativeNoiseRatio=heteroassociativeNoiseRatio, 
+        inputNoise=inputNoise
+    )
 
-    if taskPatternStabilities is None:
-        taskPatternStabilities = np.array(accuracies).copy()
-    else:
-        taskPatternStabilities = np.vstack([taskPatternStabilities, accuracies.copy()])
-    # print(f"Most Recent Epoch Accuracy: {accuracies[-1]}")
-
+    taskPatternStabilities = np.vstack([taskPatternStabilities, accuracies.copy()])
     numStableOverEpochs.extend(numStable)
 
     print(f"Most Recent Epoch Stable States: {numStable[-1]}")
     print()
 
 
-# GRAPHING ----------------------------------------------------------------------------------------------------
-titleBasis = f"Bipolar {network.N} Unit\n {network.learningRule}, {network.allowableLearningStateError} Allowable Stability Error\n{heteroassociativeNoiseRatio} Heteroassociative Noise"
+# GRAPHING ------------------------------------------------------------------------------------------------------------
+titleBasis = f"Bipolar {network.N} Unit\n {network.learningRule}\n {network.allowableLearningStateError} Allowable Stability Error, {heteroassociativeNoiseRatio} Heteroassociative Noise"
 fileNameBasis = f"{network.N}Bipolar-{network.learningRule}-{network.allowableLearningStateError}AllowableStabilityError-{heteroassociativeNoiseRatio}-HeteroassociativeNoise"
-taskEpochBoundaries=[task.startEpoch for task in tasks]
+taskEpochBoundaries = [task.startEpoch for task in tasks]
+
+plotSingleTaskStability(taskPatternStabilities[:, 0]*(len(tasks[0].taskPatterns)), taskEpochBoundaries[0],
+    title=f"{titleBasis}\n Stability of {str(tasks[0])}",
+    legend=[str(tasks[0])], figsize=(12,6),
+    fileName=f"graphs/{fileNameBasis}--StabilityOfTask0.png"
+    )
 
 plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, 
     title=f"{titleBasis}\n Stability by Task",
@@ -78,7 +106,7 @@ plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBo
     fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
     )
 
-plotTotalStablePatterns(numStableOverEpochs, N, hebbianMaximumCapacity=network.getHebbianMaxRatio(),
+plotTotalStablePatterns(numStableOverEpochs, N,
     title=f"{titleBasis}\n Total Stable Patterns", 
     figsize=(12,6),
     fileName=f"graphs/{fileNameBasis}--TotalStablePatterns.png"
