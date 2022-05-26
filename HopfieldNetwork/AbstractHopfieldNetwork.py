@@ -9,6 +9,7 @@ from .LearningRule.AbstractLearningRule import AbstractLearningRule
 
 import numpy as np
 
+
 class RelaxationException(Exception):
     """
     RelaxationException is raised when network relaxing does not reach
@@ -18,21 +19,25 @@ class RelaxationException(Exception):
     """
     pass
 
+
 class AbstractHopfieldNetwork(ABC):
 
+    # CONSTRUCTOR -----------------------------------------------------------------------------------------------------
+
     @abstractmethod
-    def __init__(self, 
-                N:int,
-                energyFunction:AbstractEnergyFunction,
-                activationFunction:AbstractActivationFunction, 
-                updateRule:AbstractUpdateRule,
-                learningRule:AbstractLearningRule,
-                allowableLearningStateError:np.float64=0,
-                weights:np.ndarray=None,
-                selfConnections:bool=False):
+    def __init__(self,
+                 N: int,
+                 energyFunction: AbstractEnergyFunction,
+                 activationFunction: AbstractActivationFunction,
+                 updateRule: AbstractUpdateRule,
+                 learningRule: AbstractLearningRule,
+                 allowableLearningStateError: np.float64 = 0,
+                 patternManager=None,
+                 weights: np.ndarray = None,
+                 selfConnections: bool = False):
         """
         Create a new Hopfield network with N units.
-        
+
         If weights is supplied, the network weights are set to the supplied weights.
 
         Args:
@@ -40,7 +45,7 @@ class AbstractHopfieldNetwork(ABC):
             weights (np.ndarray, optional): The weights of the network, if supplied. Intended to be used to recreate a network for testing.
                 If supplied, must be a 2-D matrix of float64 with size N*N. If None, random weights are created uniformly around 0.
                 Defaults to None.
-            activationFunction (AbstractActivationFunction): The activation function to use with this network. 
+            activationFunction (AbstractActivationFunction): The activation function to use with this network.
                 Must implement HopfieldNetwork.ActivationFunction.AbstractActivationFunction
                 The given functions in HopfieldNetwork.ActivationFunction do this.
             updateRule (AbstractUpdateRule): The update rule for this network.
@@ -52,6 +57,7 @@ class AbstractHopfieldNetwork(ABC):
             allowableStabilityError (np.float64, optional): The allowable error (as a ratio of all units) for a pattern to be stable
                 Implemented as a check of Hamming distance against the intended pattern during learning.
                 If 0 (default), the pattern must be exactly the same.
+            patternManager : The pattern manager that creates the patterns for this network. Optional, Defaults to None
             weights (np.ndarray, optional): The weights of this network. Must be of dimension N*N.
                 Used for reproducibility. If None then results in zero matrix of dimension N*N. Defaults to None.
             selfConnections (bool, optional): Determines if self connections are allowed or if they are zeroed out during learning
@@ -61,28 +67,77 @@ class AbstractHopfieldNetwork(ABC):
             ValueError: If the given weight matrix is not N*N and not None.
         """
 
-        self.N:int = N
-        self.networkName:str = "AbstractHopfieldNetwork"
+        self.N: int = N
+        self.networkName: str = "AbstractHopfieldNetwork"
 
-        self.weights:np.ndarray = None
+        self.weights: np.ndarray = None
         if weights is not None:
-            if weights.shape!=(N,N): raise ValueError()
-            if weights.dtype != np.float64: raise ValueError()
+            if weights.shape != (N, N):
+                raise ValueError()
+            if weights.dtype != np.float64:
+                raise ValueError()
             self.weights = weights.copy()
         else:
-            self.weights = np.zeros([N,N])
-        
+            self.weights = np.zeros([N, N])
+
         self.energyFunction = energyFunction
         self.activationFunction = activationFunction
         self.updateRule = updateRule
         self.learningRule = learningRule
         self.selfConnections = selfConnections
         self.allowableLearningStateError = allowableLearningStateError
+        self.patternManager = patternManager
 
         # The total number of epochs we have trained for
         self.epochs = 0
 
-        self.state:np.ndarray = np.ones(N)
+        self.state: np.ndarray = np.ones(N)
+
+    # CLASS METHODS -----------------------------------------------------------------------------------------------------
+    @classmethod
+    def hammingDistance(cls, state1: np.ndarray, state2: np.ndarray):
+        """
+        Find the Hamming distance between two states.
+        For discrete states this is simply a count of different units.
+        TODO Find a measure for continuous states.
+
+        Args:
+            state1 (np.ndarray): The first state
+            state2 (np.ndarray): The second state
+
+        Return:
+            np.int32: the sum of the different units between the two states
+        """
+
+        return np.sum(state1 != state2)
+
+    @classmethod
+    def invertStateUnits(cls, state: np.ndarray, inverseRatio: np.float64) -> np.ndarray:
+        """
+        Invert a number of units (determined by inverse ratio) in the given state and return it
+        Inverse is done by multiplying the units by -1
+
+        Args:
+            state (np.ndarray): The state to flip units on
+            inverseRatio (np.float64): The number of units to flip, expressed as a fraction of all units
+
+        Returns:
+            np.ndarray: A copy of the original state with a number of units flipped
+        """
+
+        newState = state.copy()
+
+        flipIndices = np.arange(newState.shape[0])
+        np.random.shuffle(flipIndices)
+
+        flipVector = np.ones_like(newState)
+        np.put(flipVector, flipIndices[:int(
+            np.ceil(inverseRatio*newState.shape[0]))], -1)
+        newState *= flipVector
+
+        return newState
+
+    # DESCRIPTION METHODS -----------------------------------------------------------------------------------------------------
 
     @abstractmethod
     def __str__(self):
@@ -91,15 +146,15 @@ class AbstractHopfieldNetwork(ABC):
         """
 
         return f"Hopfield Network: {self.networkName}"
-        
+
     def getNetworkDescriptionString(self):
         return (str(self)+"\n"
-        + f"Units: {self.N}\n"
-        + f"Energy Function: {self.energyFunction}\n"
-        + f"Activation Function: {self.activationFunction}\n"
-        + f"Update Rule: {self.updateRule}\n"
-        + f"Learning Rule: {self.learningRule}\n"
-        + f"Allowable Learning State Error: {self.allowableLearningStateError}")
+                + f"Units: {self.N}\n"
+                + f"Energy Function: {self.energyFunction}\n"
+                + f"Activation Function: {self.activationFunction}\n"
+                + f"Update Rule: {self.updateRule}\n"
+                + f"Learning Rule: {self.learningRule}\n"
+                + f"Allowable Learning State Error: {self.allowableLearningStateError}")
 
     def getNetworkDescriptionJSON(self):
         return {
@@ -112,7 +167,24 @@ class AbstractHopfieldNetwork(ABC):
             "Allowable Learning State Error": self.allowableLearningStateError
         }
 
-    def getWeights(self)->np.ndarray:
+    def getHebbianMaxRatio(self) -> np.float64:
+        """
+        Generates and returns the Hebbian maximum capacity ratio p_max/N for this network.
+        This is calculated from Hertz, J. Introduction to the Theory of Neural Computation, pg. 18-19
+        Based on self.allowableLearningStateError, if this is 0 then this method returns None.
+
+        Returns:
+            np.float64: The theoretical maximum capacity of this network given the allowable state error
+                Which is effectively a measure of how many units can be unstable in this network while still being considered stable.
+        """
+
+        if self.allowableLearningStateError == 0:
+            return None
+        return 0.5*np.power(erfinv(1 - 2*self.allowableLearningStateError), -2)
+
+    # GETTERS AND SETTERS -----------------------------------------------------------------------------------------------------
+
+    def getWeights(self) -> np.ndarray:
         """
         Get the weights of this network
         Notice a copy is returned to avoid memory issues
@@ -123,7 +195,7 @@ class AbstractHopfieldNetwork(ABC):
 
         return self.weights.copy()
 
-    def getState(self)->np.ndarray:
+    def getState(self) -> np.ndarray:
         """
         Get the state of this network
         Notice a copy is returned to avoid memory issues
@@ -135,7 +207,7 @@ class AbstractHopfieldNetwork(ABC):
         return self.state.copy()
 
     @abstractmethod
-    def setState(self, state:np.ndarray):
+    def setState(self, state: np.ndarray):
         """
         Set the state of this network.
 
@@ -153,11 +225,28 @@ class AbstractHopfieldNetwork(ABC):
             ValueError: If the given state is not a float64 vector of size N.
         """
 
-        if state.shape != (self.N,): raise ValueError()
-        if state.dtype != np.float64: raise ValueError()
+        if state.shape != (self.N,):
+            raise ValueError()
+        if state.dtype != np.float64:
+            raise ValueError()
         self.state = state.copy()
 
-    def relax(self, maxSteps:int=None)->np.ndarray:
+    # DYNAMICS AND RELAXATION METHODS -----------------------------------------------------------------------------------------------------
+
+    def _updateStep(self) -> np.ndarray:
+        """
+        Perform a single update step from the current state to the next state.
+        This method returns the next network state, so to affect the change 
+        ensure you set the network state to the output of this function.
+        This method depends on the update rule selected and activation function.
+
+        Returns:
+            np.ndarray: The result of a single update step from the current state
+        """
+
+        return self.updateRule(self.state, self.weights)
+
+    def relax(self, maxSteps: int = None) -> np.ndarray:
         """
         From the current state of the network, update until a stable state is found. Return this stable state.
 
@@ -174,59 +263,25 @@ class AbstractHopfieldNetwork(ABC):
 
         # Find the max steps, either from the arg or from the update rule
         if maxSteps is None:
-            maxSteps=self.updateRule.MAX_STEPS
+            maxSteps = self.updateRule.MAX_STEPS
 
         # Set the current step to 0 to count up until max steps
         currentStep = 0
         # TODO: Better way to calculate this? Stability of Network...
         # Stability of network determined by finding if any units have positive energy
-        while np.any(self.unitEnergies()>=0):
+        while not self.isStable():
             # If we are above the max steps allowed, we raise an error
             # The network failed to converge
             if currentStep >= maxSteps:
                 raise RelaxationException()
             # Step forward one step
             self.state = self._updateStep()
-            currentStep+=1
-        
+            currentStep += 1
+
         # We must have reached a stable state, so we can return this state
         return self.state.copy()
 
-    def _updateStep(self)->np.ndarray:
-        """
-        Perform a single update step from the current state to the next state.
-        This method returns the next network state, so to affect the change 
-        ensure you set the network state to the output of this function.
-        This method depends on the update rule selected and activation function.
-
-        Returns:
-            np.ndarray: The result of a single update step from the current state
-        """
-
-        return self.updateRule(self.state, self.weights)
-
-    def networkEnergy(self)->np.float64:
-        """
-        Get the total energy of the network. If the energy is greater than 0, the network is stable.
-        TODO: Get this working. Always the same equation?? Greater than 0 stable????
-
-        Returns:
-            float64: a single value of float64. The total energy of this network in the current state.
-        """
-
-        return -0.5*np.sum(self.energyFunction(self.state, self.weights))
-
-    def unitEnergies(self)->np.ndarray:
-        """
-        Get the energy of all units. If the energy is less than 0, the unit is stable.
-
-        Returns:
-            np.ndarray: A float64 vector of all unit energies. index i is the energy of unit i.
-        """
-
-        return self.energyFunction(self.state, self.weights)
-
-    def compareState(self, state:np.ndarray, allowableHammingDistance:np.float64=0)->bool:
+    def compareState(self, state: np.ndarray, allowableHammingDistance: np.float64 = 0) -> bool:
         """
         Compares the given state to the state of the network right now
         Returns True if the two states are the same, false otherwise
@@ -241,7 +296,7 @@ class AbstractHopfieldNetwork(ABC):
             bool: True if the given state is the same as the network state, false otherwise
         """
 
-        if allowableHammingDistance==0:
+        if allowableHammingDistance == 0:
             # Generally, a state is equal to itself or the negate of itself.
             # Negate in binary (or with state space centered around 0) has negation as *-1
             return np.array_equal(self.getState(), state) or np.array_equal(-1*self.getState(), state)
@@ -251,10 +306,69 @@ class AbstractHopfieldNetwork(ABC):
                 self.hammingDistance(-1*self.state, state)
             )
 
-            return hammingDistance <= self.N*allowableHammingDistance
+        return hammingDistance <= self.N*allowableHammingDistance
 
+    # STATE STABILITY METHODS -----------------------------------------------------------------------------------------------------
 
-    def measureTaskPatternStability(self, taskPatterns:List[List[np.ndarray]])->Tuple[List[np.float64], int]:
+    def networkEnergy(self) -> np.float64:
+        """
+        Get the total energy of the network. If the energy is greater than 0, the network is stable.
+        TODO: Get this working. Always the same equation?? Greater than 0 stable????
+
+        Returns:
+            float64: a single value of float64. The total energy of this network in the current state.
+        """
+
+        return -0.5*np.sum(self.energyFunction(self.state, self.weights))
+
+    def unitEnergies(self) -> np.ndarray:
+        """
+        Get the energy of all units. If the energy is less than 0, the unit is stable.
+
+        Returns:
+            np.ndarray: A float64 vector of all unit energies. index i is the energy of unit i.
+        """
+
+        return self.energyFunction(self.state, self.weights)
+
+    def isStable(self) -> bool:
+        """
+        Checks if the current state of the network is stable
+
+        Returns:
+            bool: True if all units in this network are stable. E<0
+        """
+
+        return np.all(self.unitEnergies() < 0)
+
+    def checkAllPatternStability(self, patterns: List[np.ndarray]) -> bool:
+        """
+        Check if all of the given patterns are stable
+
+        Args:
+            patterns (List[np.ndarray]): A list of patterns to check the stability of
+
+        Returns:
+            bool: True if all patterns are stable
+        """
+
+        # We see if all of our current patterns are stable, then carry on
+        for pattern in patterns:
+            # Set the network to the current pattern
+            self.setState(pattern)
+            try:
+                self.relax(1)
+            except RelaxationException as e:
+                # More than likely we will encounter a relaxation error, this is fine
+                pass
+
+            # If the relaxed state is the same as the pattern, we have a stable state
+            if not self.compareState(pattern, self.allowableLearningStateError):
+                # If we are not stable on even a single pattern, we must carry on
+                return False
+        return True
+
+    def measureTaskPatternStability(self, taskPatterns: List[List[np.ndarray]]) -> Tuple[List[np.float64], int]:
         """
         Measure the fraction of task patterns that are stable/remembered with the current network weights.
         The taskPatterns param is a list of lists. Ew. 
@@ -292,7 +406,7 @@ class AbstractHopfieldNetwork(ABC):
                 # The following section might be better replaced by a simple energy check??
                 # Would this work for continuos state space...
 
-                # Relax the network until stable 
+                # Relax the network until stable
                 # We can tell if the network is stable after a single step
                 try:
                     self.relax(1)
@@ -302,18 +416,18 @@ class AbstractHopfieldNetwork(ABC):
 
                 # If the relaxed state is the same as the pattern, we have a stable state
                 if self.compareState(pattern, self.allowableLearningStateError):
-                    taskAccuracy+=1
-                    numStable+=1
+                    taskAccuracy += 1
+                    numStable += 1
             # Task accuracy is scaled to a fraction of total of this tasks patterns
-            taskAccuracy/=len(task)
+            taskAccuracy /= len(task)
             taskStabilities.append(taskAccuracy)
 
         return taskStabilities, numStable
 
-    def measureTestAccuracy(self, testPatternMappings:List[Tuple[np.ndarray, np.ndarray]])->np.float64:
+    def measureTestAccuracy(self, testPatternMappings: List[Tuple[np.ndarray, np.ndarray]]) -> np.float64:
         """
         Given a mapping from input to expected output patterns, calculate the accuracy of the network on those mappings
-        TODO: Maybe look at more refined accuracy measurements? Hamming dist?
+        TODO: Maybe look at more refined accuracy measurements? Hamming dist? Dice Coefficient?
         TODO: Fix this method up to be more sensible
 
         Args:
@@ -328,20 +442,55 @@ class AbstractHopfieldNetwork(ABC):
 
         accuracy = 0
 
-        for i, (input,expectedOutput) in enumerate(testPatternMappings):
+        for i, (input, expectedOutput) in enumerate(testPatternMappings):
             self.setState(input)
             try:
                 self.relax()
             except RelaxationException as e:
                 continue
             if self.compareState(expectedOutput):
-                accuracy+=1
+                accuracy += 1
 
         return accuracy/len(testPatternMappings)
 
+    # LEARNING METHODS ------------------------------------------------------------------------------------------------------------
+
+    def generatePattern(self) -> np.ndarray:
+        """
+        Get a pattern from the pattern manager. If no pattern manager is set, raise an error
+
+        Returns:
+            np.ndarray: A pattern from the pattern manager
+        """
+        if self.patternManager is None:
+            raise ValueError
+
+        return self.patternManager.generatePattern()
+
+    def getStablePattern(self) -> Union[np.ndarray, None]:
+        """
+        Generate a random pattern from the pattern manager, and relax this until we find a stable state
+        Return the stable state. Note that we do not require or even check if this state is a learned state
+
+        Returns:
+            np.ndarray: A stable state of the network
+            None: If the relaxed state was not stable
+        """
+
+        try:
+            pattern = self.generatePattern()
+            self.setState(pattern)
+            pattern = self.relax(1000)
+        except RelaxationException:
+            pass
+        if self.isStable():
+            return self.state.copy()
+        else:
+            return None
+
     @abstractmethod
-    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None,
-        heteroassociativeNoiseRatio:np.float64=0, inputNoise:str=None)->Union[None, Tuple[List[List[np.float64]], List[int]]]:
+    def learnPatterns(self, patterns: List[np.ndarray], allTaskPatterns: List[List[np.ndarray]] = None,
+                      heteroassociativeNoiseRatio: np.float64 = 0, inputNoise: str = None) -> Union[None, Tuple[List[List[np.float64]], List[int]]]:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
@@ -370,6 +519,12 @@ class AbstractHopfieldNetwork(ABC):
                 The first element is a list of taskAccuracies over epochs (2-D array)
                 The second element is a list of numStablePatterns by epoch
         """
+        # Ensure patterns are correct type and shape
+        for pattern in patterns:
+            if pattern.shape != (self.N,):
+                raise ValueError()
+            if pattern.dtype != np.float64:
+                raise ValueError()
 
         # If allTaskPatterns given we need to track these...
         taskAccuracies = []
@@ -378,34 +533,19 @@ class AbstractHopfieldNetwork(ABC):
         # Give the learning rule heteroassociative and input noise information
         self.learningRule.heteroassociativeNoiseRatio = heteroassociativeNoiseRatio
         self.learningRule.setNetworkReference(self)
-        
+
         # Give the update rule the inputNoise information
         self.updateRule.setInputNoiseType(inputNoise)
 
-        # print(f"{heteroassociativeNoiseRatio=}\n{inputNoise=}")
-
-        # Ensure patterns are correct type and shape
-        for pattern in patterns:
-            if pattern.shape != (self.N,): raise ValueError()
-            if pattern.dtype != np.float64: raise ValueError()
-        
         currentTaskEpochs = 0
         # Loop until we reach the maximum number of epochs in the learning rule
         while currentTaskEpochs < (self.learningRule.maxEpochs):
-            currentTaskEpochs+=1
-            self.epochs+=1
-
-            # Print some information for debugging
-            if self.learningRule.maxEpochs>1:
-                # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
-                if len(taskAccuracies)>0 and len(allTaskPatterns)<20:
-                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
-                else:
-                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
-
+            currentTaskEpochs += 1
+            self.epochs += 1
 
             # Set the learning and update rule noise information
-            self.learningRule.setHeteroassociativeNoiseRatio(heteroassociativeNoiseRatio)
+            self.learningRule.setHeteroassociativeNoiseRatio(
+                heteroassociativeNoiseRatio)
             self.updateRule.setInputNoiseType(inputNoise)
 
             # Set the weights to the output of the learning rule
@@ -414,103 +554,36 @@ class AbstractHopfieldNetwork(ABC):
             # Clear the noise information
             self.learningRule.clearHeteroassociativeNoiseRatio()
             self.updateRule.clearInputNoiseType()
-            
+
+            # Print some information for debugging
+            if self.learningRule.maxEpochs > 1:
+                if len(taskAccuracies) > 0 and len(allTaskPatterns) < 20:
+                # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
+                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
+                else:
+                    print(
+                        f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
 
             # If we are removing self connections, do that now
             if not self.selfConnections:
                 np.fill_diagonal(self.weights, 0)
 
-            
             if allTaskPatterns is not None:
-                acc,numStable=self.measureTaskPatternStability(allTaskPatterns)
+                acc, numStable = self.measureTaskPatternStability(
+                    allTaskPatterns)
                 taskAccuracies.append(acc)
                 numStableByEpoch.append(numStable)
 
             # If we are only training until stable
             if self.learningRule.trainUntilStable:
-                # We see if all of our current patterns are stable, then carry on
-                learnedAllPatterns = True
-                for pattern in patterns:
-                    # Set the network to the current pattern
-                    self.setState(pattern)
-                    try:
-                        self.relax(1)
-                    except RelaxationException as e:
-                        # More than likely we will encounter a relaxation error, this is fine
-                        pass
-
-                    # If the relaxed state is the same as the pattern, we have a stable state
-                    if not self.compareState(pattern, self.allowableLearningStateError):
-                        # If we are not stable on even a single pattern, we must carry on
-                        learnedAllPatterns = False
-                        break
                 # If we HAVE learned all the patterns, we can stop training!
-                if learnedAllPatterns:
+                if self.checkAllPatternStability(patterns):
                     break
 
+        # END While taskEpochs<self.learningRule.maxEpochs
         print()
+        self.learningRule.finishTask(patterns)
 
-        # Give the learning rule heteroassociative and input noise information
-        self.learningRule.heteroassociativeNoiseRatio = heteroassociativeNoiseRatio
-        # Give the update rule the inputNoise information
-        self.updateRule.inputNoise = inputNoise
 
         if allTaskPatterns is not None:
             return taskAccuracies, numStableByEpoch
-
-    def invertStateUnits(self, state:np.ndarray, inverseRatio:np.float64)->np.ndarray:
-        """
-        Invert a number of units (determined by inverse ratio) in the given state and return it
-        Inverse is done by multiplying the units by -1 
-
-        Args:
-            state (np.ndarray): The state to flip units on
-            inverseRatio (np.float64): The number of units to flip, expressed as a fraction of all units
-
-        Returns:
-            np.ndarray: A copy of the original state with a number of units flipped
-        """
-
-        newState = state.copy()
-
-        flipIndices = np.arange(newState.shape[0])
-        np.random.shuffle(flipIndices)
-
-        flipVector = np.ones_like(newState)
-        np.put(flipVector, flipIndices[:int(np.ceil(inverseRatio*newState.shape[0]))], -1)
-        newState*=flipVector
-
-        return newState
-
-    @classmethod
-    def hammingDistance(cls, state1:np.ndarray, state2:np.ndarray):
-        """
-        Find the Hamming distance between two states.
-        For discrete states this is simply a count of different units.
-        TODO Find a measure for continuous states.
-
-        Args:
-            state1 (np.ndarray): The first state
-            state2 (np.ndarray): The second state
-
-        Return:
-            np.int32: the sum of the different units between the two states
-        """
-
-        return np.sum(state1!=state2)
-    
-    def getHebbianMaxRatio(self)->np.float64:
-        """
-        Generates and returns the Hebbian maximum capacity ratio p_max/N for this network.
-        This is calculated from Hertz, J. Introduction to the Theory of Neural Computation, pg. 18-19
-        Based on self.allowableLearningStateError, if this is 0 then this method returns None.
-
-        Returns:
-            np.float64: The theoretical maximum capacity of this network given the allowable state error
-                Which is effectively a measure of how many units can be unstable in this network while still being considered stable.
-        """
-
-        if self.allowableLearningStateError == 0:
-            return None
-        return 0.5*np.power(erfinv(1 - 2*self.allowableLearningStateError), -2)
-
