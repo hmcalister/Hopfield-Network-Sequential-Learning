@@ -5,7 +5,7 @@ import numpy as np
 
 class MappedBinaryHebbian(AbstractLearningRule):
 
-    def __init__(self, trainUntilStable:bool=True):
+    def __init__(self, trainUntilStable:bool=False):
         """
         Create a new MappedBinaryHebbian Learning Rule
         This maps the binary field to the bipolar field, allowing for negative weight updates
@@ -46,18 +46,24 @@ class MappedBinaryHebbian(AbstractLearningRule):
 
         # If numStatesLearned is zero we are learning the first task
         if self.numStatesLearned==0:
-            # Update the number of states learned
-            self.numStatesLearned+=len(patterns)
             # And return the scaled weight changes
-            return weights+(1/self.numStatesLearned)*weightChanges
+            return weights+(1/len(patterns))*weightChanges
         # Otherwise, we are on a sequential task
         else:
             # First, scale the weights back up by number of patterns learned (before this task)
             weights = weights*self.numStatesLearned
-            # Add the patterns we just learned
-            self.numStatesLearned+=len(patterns)
             # Add the weight changes
             weights += weightChanges
             # And scale back down
-            weights /= self.numStatesLearned
+            weights /= (self.numStatesLearned+len(patterns))
             return weights
+
+    def finishTask(self, taskPatterns:List[np.ndarray]):
+        """
+        Finish a task and do any post-processing, to be called after all epochs are run
+
+        Args:
+            taskPatterns (List[np.ndarray]): The task patterns from this task
+        """
+
+        self.numStatesLearned+=len(taskPatterns)

@@ -22,7 +22,7 @@ class AbstractLearningRule(ABC):
         # Track how many states have been learned so far
         self.numStatesLearned = 0
         # Flag to determine if we should train until stable, defaults to True
-        self.trainUntilStable = True
+        self.trainUntilStable = False
         # Set the heteroassociativeNoiseRatio, how many bits to flip during training
         # This is set at a call to network.learnPatterns
         self.heteroassociativeNoiseRatio = 0
@@ -42,6 +42,17 @@ class AbstractLearningRule(ABC):
 
         Returns:
             np.ndarray: The new weights of the network after learning
+        """
+
+        pass
+
+    @abstractmethod
+    def finishTask(self, taskPatterns:List[np.ndarray]):
+        """
+        Finish a task and do any post-processing, to be called after all epochs are run
+
+        Args:
+            taskPatterns (List[np.ndarray]): The task patterns from this task
         """
 
         pass
