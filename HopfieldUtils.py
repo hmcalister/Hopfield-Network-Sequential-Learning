@@ -4,7 +4,49 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-def plotTaskPatternStability(taskPatternStabilities:np.ndarray, taskEpochBoundaries:List[int], plotAverage:bool=True, title:str=None, 
+def plotSingleTaskStability(taskPatternStability:np.ndarray, taskEpochStart:int, title:str=None,
+    epochMarkers:str=None, legend:List[str]=None, figsize=(8,6), fileName:str=None):
+    """
+    Plot the task pattern stability of one task over many epochs
+
+    Args:
+        taskPatternAccuracies (np.ndarray): A numpy array of dimension (numEpochs)
+        taskEpochStart (int): The start epoch of the task.
+        epochMarkers (Str, optional): The marker to use for epoch data points. Defaults to None
+        title (str or None, optional): Title of the graph. Defaults to None.
+        legend (List[str] or None, optional): A list of strings to use as the legend of the plot.
+            Do not include the average legend. If None, use default legend. Defaults to None
+        figsize (Tuple[int, int]): The size of the figure.
+        fileName (str, optional): If not None, saves the plot to the file name. Defaults to None.
+    """
+
+    xRange = np.arange(taskPatternStability.shape[0])
+
+    plt.figure(figsize=figsize)
+
+    label=None
+    if legend is not None:
+        label = legend[0]
+        
+    plt.plot(xRange[taskEpochStart:], taskPatternStability[taskEpochStart:], marker=epochMarkers, label=label)
+
+    if legend is not None:
+        plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
+
+    plt.ylim(-0.05, max(taskPatternStability)*1.05)
+    plt.title(title)
+    plt.xlabel("Epoch")
+    plt.ylabel("Task Accuracy")
+    plt.tight_layout()
+
+    if fileName is None:
+        plt.show()
+    else:
+        plt.savefig(fileName)
+        plt.cla()
+
+
+def plotTaskPatternStability(taskPatternStabilities:np.ndarray, taskEpochBoundaries:List[int], epochMarkers:str=None, plotAverage:bool=True, title:str=None, 
     legend:List[str]=None, figsize=(8,6), fileName:str=None):
     """
     Plot the task pattern stability over many epochs, with each task getting its own line
@@ -13,6 +55,7 @@ def plotTaskPatternStability(taskPatternStabilities:np.ndarray, taskEpochBoundar
         taskPatternAccuracies (np.ndarray): A numpy array of dimension (numEpochs, numTasks)
             The first index walks over epochs, while the second index walks over tasks
         taskEpochBoundaries (List[int]): The list of epochs where each task starts being learned.
+        epochMarkers (Str, optional): The marker to use for epoch data points. Defaults to None
         plotAverage (bool, optional): A boolean to also plot the average task pattern stability over all tasks
             Defaults to True.
         title (str or None, optional): Title of the graph. Defaults to None.
@@ -32,7 +75,7 @@ def plotTaskPatternStability(taskPatternStabilities:np.ndarray, taskEpochBoundar
             label = legend[i]
         # The index [i:, i] will select the i-th column (task i) but only
         # from time i onwards, so we do not plot tasks before they are learned
-        plt.plot(xRange[taskEpochBoundaries[i]:], taskPatternStabilities[taskEpochBoundaries[i]:, i], marker="x", label=label)
+        plt.plot(xRange[taskEpochBoundaries[i]:], taskPatternStabilities[taskEpochBoundaries[i]:, i], marker=epochMarkers, label=label)
 
     if plotAverage:
         avgStability = []
@@ -44,7 +87,7 @@ def plotTaskPatternStability(taskPatternStabilities:np.ndarray, taskEpochBoundar
     plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
     plt.title(title)
     plt.xlabel("Epoch")
-    plt.ylabel("Task Pattern Stability")
+    plt.ylabel("Task Accuracy")
     plt.tight_layout()
 
     if fileName is None:
