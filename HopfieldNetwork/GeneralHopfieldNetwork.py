@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Tuple, Union
 from .AbstractHopfieldNetwork import AbstractHopfieldNetwork
 from .UpdateRule.AbstractUpdateRule import AbstractUpdateRule
 from .EnergyFunction.AbstractEnergyFunction import AbstractEnergyFunction
@@ -18,6 +18,7 @@ class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
                 updateRule:AbstractUpdateRule,
                 learningRule:AbstractLearningRule, 
                 allowableLearningStateError:np.float64=0,
+                patternManager=None,
                 weights:np.ndarray=None,
                 selfConnections:bool=False):
         """
@@ -43,6 +44,7 @@ class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
             allowableLearningStateError (np.float64, optional): The allowable error (as a ratio of all units) for a pattern to be stable
                 Implemented as a check of Hamming distance against the intended pattern during learning.
                 If 0 (default), the pattern must be exactly the same.
+            patternManager : The pattern manager that creates the patterns for this network. Optional, Defaults to None
             weights (np.ndarray, optional): The weights of this network. Must be of dimension N*N.
                 Used for reproducibility. Defaults to None.
             selfConnections (bool, optional): Determines if self connections are allowed or if they are zeroed out during learning
@@ -60,7 +62,8 @@ class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
             learningRule=learningRule,
             allowableLearningStateError=allowableLearningStateError,
             weights=weights,
-            selfConnections=selfConnections
+            selfConnections=selfConnections,
+            patternManager=patternManager
         )
 
         self.networkName:str = "GeneralHopfieldNetwork"
@@ -83,8 +86,8 @@ class GeneralHopfieldNetwork(AbstractHopfieldNetwork):
 
         super().setState(state.copy())
 
-    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None,
-        heteroassociativeNoiseRatio:np.float64=0, inputNoise:str=None)->None:
+    def learnPatterns(self, patterns:List[np.ndarray], allTaskPatterns:List[List[np.ndarray]]=None, 
+        heteroassociativeNoiseRatio:np.float64=0, inputNoise:str=None)->Union[None, Tuple[List[List[np.float64]], List[int]]]:
         """
         Learn a set of patterns given. This method will use the learning rule given at construction to learn the patterns.
         The patterns are given as a list of np.ndarrays which must each be a vector of size N.
