@@ -21,12 +21,8 @@ class BinaryEnergyFunction(AbstractEnergyFunction):
             np.ndarray: The vector of energies corresponding to the units in the state
         """
 
-        # Calculate the next states of the network
         nextState = np.dot(weights, state)
-        # Then map the states to binary field
-        # And calculate if states are the same or different by multiplication
-        # Now if states are different, energies are positive
-        energies = -1*(nextState)*(2*state-1)
+        energies = np.abs(nextState-state)
         return energies
 
     def __str__(self):
