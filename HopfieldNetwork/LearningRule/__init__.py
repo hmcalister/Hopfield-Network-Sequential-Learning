@@ -8,3 +8,7 @@ from .PseudorehearsalHebbian import PseudorehearsalHebbian
 from .Delta import Delta
 from .RehearsalDelta import RehearsalDelta
 from .PseudorehearsalDelta import PseudorehearsalDelta
+
+from .ThermalDelta import ThermalDelta
+from .RehearsalThermalDelta import RehearsalThermalDelta
+from .PseudorehearsalThermalDelta import PseudorehearsalThermalDelta
