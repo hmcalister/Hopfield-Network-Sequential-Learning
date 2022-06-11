@@ -22,7 +22,7 @@ def plotSingleTaskStability(taskPatternStability:np.ndarray, taskEpochStart:int,
 
     xRange = np.arange(taskPatternStability.shape[0])
 
-    plt.figure(figsize=figsize)
+    plt.figure(figsize=(12,6))
 
     label=None
     if legend is not None:
