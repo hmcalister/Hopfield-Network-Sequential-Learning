@@ -123,12 +123,21 @@ class PseudorehearsalHebbian(AbstractLearningRule):
             List[np.ndarray]: The new list of stable states
         """
             
-        # self.stableStates = []
-        for _ in range(self.numPseudorehearsalSamples):
+        if len(self.stableStates)>0:
+            return
+
+        attemptCounter = 0
+        # Give ourselves some space to find the stable states requested
+        maxAttempts = 10 * self.numPseudorehearsalSamples
+        newStableStates = []
+        while len(newStableStates) < (self.numPseudorehearsalSamples) and attemptCounter < maxAttempts:
+            attemptCounter += 1
             stablePattern = self.network.getStablePattern()
             if stablePattern is None:
                 continue
-            self.stableStates.append(stablePattern.copy())
+            newStableStates.append(stablePattern.copy())
+            print(f"NewStableStates: {len(newStableStates)}/{self.numPseudorehearsalSamples}"+" "*80, end="\r")
+        print()
 
         return self.stableStates
 
