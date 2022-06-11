@@ -111,32 +111,6 @@ class AbstractHopfieldNetwork(ABC):
 
         return np.sum(state1 != state2)
 
-    @classmethod
-    def invertStateUnits(cls, state: np.ndarray, inverseRatio: np.float64) -> np.ndarray:
-        """
-        Invert a number of units (determined by inverse ratio) in the given state and return it
-        Inverse is done by multiplying the units by -1
-
-        Args:
-            state (np.ndarray): The state to flip units on
-            inverseRatio (np.float64): The number of units to flip, expressed as a fraction of all units
-
-        Returns:
-            np.ndarray: A copy of the original state with a number of units flipped
-        """
-
-        newState = state.copy()
-
-        flipIndices = np.arange(newState.shape[0])
-        np.random.shuffle(flipIndices)
-
-        flipVector = np.ones_like(newState)
-        np.put(flipVector, flipIndices[:int(
-            np.ceil(inverseRatio*newState.shape[0]))], -1)
-        newState *= flipVector
-
-        return newState
-
     # DESCRIPTION METHODS -----------------------------------------------------------------------------------------------------
 
     @abstractmethod
@@ -154,7 +128,8 @@ class AbstractHopfieldNetwork(ABC):
                 + f"Activation Function: {self.activationFunction}\n"
                 + f"Update Rule: {self.updateRule}\n"
                 + f"Learning Rule: {self.learningRule}\n"
-                + f"Allowable Learning State Error: {self.allowableLearningStateError}")
+                + f"Allowable Learning State Error: {self.allowableLearningStateError}"
+                )
 
     def getNetworkDescriptionJSON(self):
         return {
@@ -281,7 +256,7 @@ class AbstractHopfieldNetwork(ABC):
         # We must have reached a stable state, so we can return this state
         return self.state.copy()
 
-    def compareState(self, state: np.ndarray, allowableHammingDistance: np.float64 = 0) -> bool:
+    def compareState(self, state: np.ndarray, allowableHammingDistanceRatio: np.float64 = 0) -> bool:
         """
         Compares the given state to the state of the network right now
         Returns True if the two states are the same, false otherwise
@@ -296,19 +271,67 @@ class AbstractHopfieldNetwork(ABC):
             bool: True if the given state is the same as the network state, false otherwise
         """
 
-        if allowableHammingDistance == 0:
+        invertState = self.activationFunction(-1*self.getState())
+
+        if allowableHammingDistanceRatio == 0:
             # Generally, a state is equal to itself or the negate of itself.
             # Negate in binary (or with state space centered around 0) has negation as *-1
-            return np.array_equal(self.getState(), state) or np.array_equal(-1*self.getState(), state)
+            return np.array_equal(self.getState(), state) or np.array_equal(invertState, state)
         else:
             hammingDistance = min(
                 self.hammingDistance(self.state, state),
-                self.hammingDistance(-1*self.state, state)
+                self.hammingDistance(invertState, state)
             )
 
-        return hammingDistance <= self.N*allowableHammingDistance
+            return hammingDistance <= self.N*allowableHammingDistanceRatio
 
     # STATE STABILITY METHODS -----------------------------------------------------------------------------------------------------
+
+    def invertStateUnits(self, state: np.ndarray, inverseRatio: np.float64) -> np.ndarray:
+        """
+        Invert a number of units (determined by inverse ratio) in the given state and return it
+        Inverse is done by multiplying the units by -1 and passing through the activation
+
+        Args:
+            state (np.ndarray): The state to flip units on
+            inverseRatio (np.float64): The number of units to flip, expressed as a fraction of all units
+
+        Returns:
+            np.ndarray: A copy of the original state with a number of units flipped
+        """
+
+        # numFlip = int(np.ceil(inverseRatio*state.shape[0]))
+        # newState = state.copy()
+        # donorPattern = self.generatePattern()
+        # numFlip = int(np.ceil(inverseRatio*newState.shape[0]))
+        # flipIndices = np.arange(newState.shape[0])
+        # np.random.shuffle(flipIndices)
+        # flipIndices = flipIndices[:numFlip]
+        # np.put(newState, flipIndices, donorPattern)
+
+        maxFlip = int(np.ceil(inverseRatio*state.shape[0]))
+        numFlip = np.random.randint(0, maxFlip+1)
+        flipIndices = np.arange(state.shape[0])
+        np.random.shuffle(flipIndices)
+        flipIndices = flipIndices[:numFlip]
+        flipMask = np.zeros(state.shape[0], dtype=bool)
+        flipMask[flipIndices]=True
+
+        newState = state.copy()
+        invertState = self.activationFunction(-1*state.copy())
+        np.copyto(newState, invertState, where=flipMask)
+
+        # print(f"ORG: {self.state}")
+        # print(f"INV: {invertState}")
+        # print(f"NEW: {newState}")
+        # print(f"O&N: {1*(self.state == newState)}")
+        # print(f"INDEX: {flipIndices}")
+        # print()
+
+        # newState = self.activationFunction(newState)
+
+
+        return newState
 
     def networkEnergy(self) -> np.float64:
         """
@@ -397,6 +420,9 @@ class AbstractHopfieldNetwork(ABC):
 
         # First index of taskPatterns indexes tasks
         for task in taskPatterns:
+            if len(task) == 0:
+                taskStabilities.append(0)
+                continue
             # This task starts with an accuracy of 0
             taskAccuracy = 0
             # The next index is over patterns within a task
@@ -467,7 +493,7 @@ class AbstractHopfieldNetwork(ABC):
 
         return self.patternManager.generatePattern()
 
-    def getStablePattern(self) -> Union[np.ndarray, None]:
+    def getStablePattern(self, pattern:np.ndarray=None) -> Union[np.ndarray, None]:
         """
         Generate a random pattern from the pattern manager, and relax this until we find a stable state
         Return the stable state. Note that we do not require or even check if this state is a learned state
@@ -477,10 +503,11 @@ class AbstractHopfieldNetwork(ABC):
             None: If the relaxed state was not stable
         """
 
-        try:
+        if pattern is None:
             pattern = self.generatePattern()
-            self.setState(pattern)
-            pattern = self.relax(1000)
+        self.setState(pattern)
+        try:
+            pattern = self.relax(100)
         except RelaxationException:
             pass
         if self.isStable():
@@ -530,12 +557,7 @@ class AbstractHopfieldNetwork(ABC):
         taskAccuracies = []
         numStableByEpoch = []
 
-        # Give the learning rule heteroassociative and input noise information
-        self.learningRule.heteroassociativeNoiseRatio = heteroassociativeNoiseRatio
         self.learningRule.setNetworkReference(self)
-
-        # Give the update rule the inputNoise information
-        self.updateRule.setInputNoiseType(inputNoise)
 
         currentTaskEpochs = 0
         # Loop until we reach the maximum number of epochs in the learning rule
@@ -544,8 +566,7 @@ class AbstractHopfieldNetwork(ABC):
             self.epochs += 1
 
             # Set the learning and update rule noise information
-            self.learningRule.setHeteroassociativeNoiseRatio(
-                heteroassociativeNoiseRatio)
+            self.learningRule.setHeteroassociativeNoiseRatio(heteroassociativeNoiseRatio)
             self.updateRule.setInputNoiseType(inputNoise)
 
             # Set the weights to the output of the learning rule
@@ -561,16 +582,14 @@ class AbstractHopfieldNetwork(ABC):
                 # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
                     print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
                 else:
-                    print(
-                        f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
+                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
 
             # If we are removing self connections, do that now
             if not self.selfConnections:
                 np.fill_diagonal(self.weights, 0)
 
             if allTaskPatterns is not None:
-                acc, numStable = self.measureTaskPatternStability(
-                    allTaskPatterns)
+                acc, numStable = self.measureTaskPatternStability(allTaskPatterns)
                 taskAccuracies.append(acc)
                 numStableByEpoch.append(numStable)
 
