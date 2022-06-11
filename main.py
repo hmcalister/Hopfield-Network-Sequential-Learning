@@ -3,8 +3,12 @@ import PatternManager
 from HopfieldUtils import *
 import numpy as np
 
-np.set_printoptions(precision=2)
+np.set_printoptions(precision=1)
+np.set_printoptions(suppress=True)
 N = 100
+
+numPatternsByTask = [20]
+numPatternsByTask.extend([1 for _ in range(5)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
 # Pattern generation params ---------------------------------------------------
@@ -14,23 +18,39 @@ patternManager = PatternManager.SequentialLearningPatternManager(N, mappingFunct
 # Network params---------------------------------------------------------------
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
+# updateRule = HopfieldNetwork.UpdateRule.AsynchronousList(activationFunction)
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 
 
-
+EPOCHS=1000
 # learningRule = HopfieldNetwork.LearningRule.Hebbian()
-# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=1, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=1, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
+# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=EPOCHS, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
+# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=EPOCHS, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
 
-# learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=100)
-# learningRule = HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=100, numRehearse=3, updateRehearsalStatesFreq="Epoch")
-learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=10, numRehearse=3, keepPreviousStableStates=False, 
-    numPseudorehearsalSamples=32, updateRehearsalStatesFreq="Epoch")
+# learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=EPOCHS)
+# learningRule = HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=EPOCHS, numRehearse=3, updateRehearsalStatesFreq="Epoch")
+# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=EPOCHS, 
+#     fracRehearse=1, trainUntilStable=False,
+#     numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch",
+#     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
+#     rejectLearnedStatesAsPseudoitems=False)
+
+TEMPERATURE = 500
+DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS),3)
+# learningRule = HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE)
+# learningRule = HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, 
+#     temperatureDecay=DECAY_RATE,
+#     numRehearse=3, updateRehearsalStatesFreq="Epoch")
+learningRule = HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE, 
+    fracRehearse=1, trainUntilStable=False,
+    numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", 
+    keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+    rejectLearnedStatesAsPseudoitems=False)
 
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.01
 inputNoise = None
-heteroassociativeNoiseRatio = 0
+heteroassociativeNoiseRatio = 0.05
 
 # SETUP ---------------------------------------------------------------------------------------------------------------
 # Create network
@@ -41,13 +61,10 @@ network = HopfieldNetwork.GeneralHopfieldNetwork(
     updateRule=updateRule,
     learningRule=learningRule,
     allowableLearningStateError=allowableLearningStateError,
-    patternManager=patternManager
+    patternManager=patternManager,
+    weights=np.random.normal(size=(N,N))
 )
 
-# Create tasks
-numPatternsByTask = [20]
-numPatternsByTask.extend([1 for i in range(10)])
-# numPatternsByTask.extend([1 for i in range(10)])
 tasks = patternManager.createTasks(
     numPatternsByTask=numPatternsByTask
 )
@@ -69,8 +86,9 @@ for task in tasks:
     seenPatterns.extend(task.getTaskPatterns())
     
     print(f"{task}")
-    # print(f"Task Patterns: {task.taskPatterns}")
-    # print(f"{seenPatterns=}")
+    # print(f"Task Patterns:")
+    # for pattern in task.getTaskPatterns():
+    #     print(pattern)
 
     # This task has started, note this
     task.startEpoch = network.epochs
@@ -81,6 +99,8 @@ for task in tasks:
         heteroassociativeNoiseRatio=heteroassociativeNoiseRatio, 
         inputNoise=inputNoise
     )
+
+    # print(f"Network Weights:\n{network.weights}")
 
     taskPatternStabilities = np.vstack([taskPatternStabilities, accuracies.copy()])
     numStableOverEpochs.extend(numStable)
