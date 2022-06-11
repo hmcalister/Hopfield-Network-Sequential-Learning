@@ -6,7 +6,7 @@ import numpy as np
 class RehearsalDelta(AbstractLearningRule):
 
     def __init__(self, maxEpochs:int=100, numRehearse:np.int64=0, fracRehearse:np.float64=0,
-        updateRehearsalStatesFreq:str="Epoch", keepPreviousWeights:bool=True, trainUntilStable:bool=False):
+        updateRehearsalStatesFreq:str="Epoch", trainUntilStable:bool=False):
         """
         Create a new RehearsalDelta Learning Rule
         Delta rule calculates the network state after a single update step
@@ -20,8 +20,6 @@ class RehearsalDelta(AbstractLearningRule):
                 Defaults to 0. (all patterns)
             updateRehearsalStatesFreq (str, optional): When to update the rehearsal states. 'Epoch' chooses new states every call/epoch
                 'Task' chooses new states every task
-            keepPreviousWeights (bool, optional): Flag to keep the previous weights of the network, or throw these away
-                Defaults to True.
             trainUntilStable (bool, optional): Flag to train current pattern until stable.
                 Defaults to False.
         """
@@ -43,7 +41,6 @@ class RehearsalDelta(AbstractLearningRule):
         self.numRehearse = numRehearse
         self.fracRehearse = fracRehearse
         self.updateRehearsalStatesFreq = updateRehearsalStatesFreq
-        self.keepPreviousWeights = keepPreviousWeights
 
     def __str__(self):
         if self.numRehearse!=0:

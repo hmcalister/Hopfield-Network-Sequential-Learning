@@ -103,3 +103,5 @@ class AbstractLearningRule(ABC):
         if self.heteroassociativeNoiseRatio>0:
             self.network.setState(self.network.invertStateUnits(self.network.getState(), self.heteroassociativeNoiseRatio))
         return self.network.getState()
+
+    

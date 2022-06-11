@@ -6,7 +6,7 @@ import numpy as np
 class RehearsalHebbian(AbstractLearningRule):
 
     def __init__(self, maxEpochs:int=1, numRehearse:np.int64=0, fracRehearse:np.float64=0, 
-        updateRehearsalStatesFreq:str="Epoch", keepPreviousWeights:bool=True, trainUntilStable:bool=False):
+        updateRehearsalStatesFreq:str="Epoch", trainUntilStable:bool=False):
         """
         Create a new RehearsalHebbian Learning Rule
 
@@ -20,8 +20,6 @@ class RehearsalHebbian(AbstractLearningRule):
                 Defaults to 0. (all patterns)
             updateRehearsalStatesFreq (str, optional): When to update the rehearsal states. 'Epoch' chooses new states every call/epoch
                 'Task' chooses new states every task
-            keepPreviousWeights (bool, optional): Flag to keep the previous weights of the network, or throw these away
-                Defaults to True.
             trainUntilStable (bool, optional): Flag to train current pattern until stable.
                 Defaults to False.
         """
@@ -40,7 +38,6 @@ class RehearsalHebbian(AbstractLearningRule):
         self.numRehearse = numRehearse
         self.fracRehearse = fracRehearse
         self.updateRehearsalStatesFreq = updateRehearsalStatesFreq
-        self.keepPreviousWeights = keepPreviousWeights
 
     def __str__(self):
         if self.numRehearse!=0:
@@ -72,10 +69,6 @@ class RehearsalHebbian(AbstractLearningRule):
             self.updateRehearsalPatterns()
         for pattern in self.rehearsalPatterns:
             weightChanges = weightChanges+np.outer(pattern, pattern)
-
-        if not self.keepPreviousWeights:
-            self.numStatesLearned+=len(patterns)
-            return (1/self.numStatesLearned)*weightChanges
 
         # If numStatesLearned is zero we are learning the first task
         if self.numStatesLearned==0:

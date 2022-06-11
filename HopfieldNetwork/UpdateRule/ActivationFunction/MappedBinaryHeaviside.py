@@ -14,7 +14,6 @@ class MappedBinaryHeaviside(AbstractActivationFunction):
 
     def __call__(self, state:ndarray)->ndarray:
         
-        # Binary Heaviside maps negative values to 0 and positive to 1
         out=array(heaviside(state,0))
         return out
 
