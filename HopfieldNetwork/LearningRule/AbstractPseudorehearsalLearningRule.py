@@ -39,7 +39,7 @@ class AbstractPseudorehearsalLearningRule(AbstractLearningRule):
         self.maxStableStatesAttemptsFactor = 20
 
     def isPatternInSet(self, pattern:np.ndarray, set:np.ndarray):
-        inversePattern = self.network.invertStateUnits(pattern.copy(), 1)
+        inversePattern = self.network.getInverseState(pattern.copy())
         return np.any(np.all(pattern == set,axis=1)) or np.any(np.all(inversePattern == set,axis=1))
 
     def updateRehearsalPatterns(self)->List[np.ndarray]:
@@ -78,14 +78,14 @@ class AbstractPseudorehearsalLearningRule(AbstractLearningRule):
         maxAttempts = self.maxStableStatesAttemptsFactor * self.numPseudorehearsalSamples
         newStableStates = np.empty((0,self.network.N))
         
-        for previouslyStableState in self.stableStates:
-            self.network.setState(previouslyStableState)
-            stillStable = self.network.isStable()
-            if stillStable:
-                newStableStates = np.vstack([newStableStates, previouslyStableState.copy()])
-            print(f"NewStableStates: {len(newStableStates)}/{self.numPseudorehearsalSamples}, Previous Stable State: {stillStable=}"+" "*80, end="\r")
+        # for previouslyStableState in self.stableStates:
+        #     self.network.setState(previouslyStableState)
+        #     stillStable = self.network.isStable()
+        #     if stillStable:
+        #         newStableStates = np.vstack([newStableStates, previouslyStableState.copy()])
+        #     print(f"NewStableStates: {len(newStableStates)}/{self.numPseudorehearsalSamples}, Previous Stable State: {stillStable=}"+" "*80, end="\r")
             
-        print()
+        # print()
         attemptCounter = 0
 
         while len(newStableStates) < (self.numPseudorehearsalSamples) and attemptCounter < maxAttempts:

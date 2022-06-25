@@ -31,6 +31,9 @@ class Delta(AbstractLearningRule):
         self.trainUntilStable = trainUntilStable
 
     def __str__(self):
+        return f"Delta"
+
+    def infoString(self):
         return f"Delta-{self.maxEpochs} Max Epochs"
 
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:

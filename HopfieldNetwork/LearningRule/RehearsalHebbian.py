@@ -40,6 +40,9 @@ class RehearsalHebbian(AbstractLearningRule):
         self.updateRehearsalStatesFreq = updateRehearsalStatesFreq
 
     def __str__(self):
+        return f"RehearsalHebbian"
+
+    def infoString(self):
         if self.numRehearse!=0:
             return f"RehearsalHebbian-{self.numRehearse}NumRehearse {self.updateRehearsalStatesFreq}UpdateFreq"
         return f"RehearsalHebbian-{self.fracRehearse}FracRehearse {self.updateRehearsalStatesFreq}UpdateFreq"

@@ -53,6 +53,10 @@ class PseudorehearsalThermalDelta(AbstractPseudorehearsalLearningRule):
       
 
     def __str__(self):
+            
+        return f"PseudoehearsalThermalDelta"
+
+    def infoString(self):
         rejectStr = ""
         if self.rejectLearnedStatesAsPseudoitems:
             rejectStr = "RejectLearnedStates"

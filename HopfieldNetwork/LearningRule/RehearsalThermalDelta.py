@@ -55,6 +55,10 @@ class RehearsalThermalDelta(AbstractLearningRule):
         self.rehearseFirstTaskOnly = rehearseFirstTaskOnly
 
     def __str__(self):
+            
+        return f"RehearsalThermalDelta"
+
+    def infoString(self):
 
         if self.numRehearse!=0:
             return f"RehearsalThermalDelta-{self.maxEpochs} MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay {self.numRehearse}NumRehearse {self.updateRehearsalStatesFreq}UpdateFreq"

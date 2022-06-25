@@ -49,6 +49,9 @@ class PseudorehearsalDelta(AbstractPseudorehearsalLearningRule):
         self.maxEpochs = maxEpochs       
 
     def __str__(self):
+        return f"PseudorehearsalDelta"
+
+    def infoString(self):
         pseudoSamplesStr = None
         if self.numRehearse!=0:
             pseudoSamplesStr = f"{self.numRehearse}NumRehearse"

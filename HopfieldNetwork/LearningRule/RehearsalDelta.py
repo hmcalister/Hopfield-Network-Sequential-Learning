@@ -43,6 +43,9 @@ class RehearsalDelta(AbstractLearningRule):
         self.updateRehearsalStatesFreq = updateRehearsalStatesFreq
 
     def __str__(self):
+        return f"RehearsalDelta"
+
+    def infoString(self):
         if self.numRehearse!=0:
             return f"RehearsalDelta-{self.maxEpochs} MaxEpochs {self.numRehearse}NumRehearse {self.updateRehearsalStatesFreq}UpdateFreq"
         return f"RehearsalDelta-{self.maxEpochs} MaxEpochs {self.fracRehearse}FracRehearse {self.updateRehearsalStatesFreq}UpdateFreq"

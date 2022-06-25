@@ -33,6 +33,10 @@ class AbstractLearningRule(ABC):
         return "AbstractLearningRule"
 
     @abstractmethod
+    def infoString(self):
+        return "AbstractLearningRule"
+
+    @abstractmethod
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
         Learn a set of patterns and return the weights

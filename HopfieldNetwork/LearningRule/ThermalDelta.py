@@ -40,7 +40,11 @@ class ThermalDelta(AbstractLearningRule):
 
     def __str__(self):
             
-        return f"ThermalDelta-{self.maxEpochs}MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay"
+        return f"ThermalDelta"
+
+    def infoString(self):
+            
+        return f"ThermalDelta-{self.maxEpochs} MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay"
 
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
@@ -58,6 +62,8 @@ class ThermalDelta(AbstractLearningRule):
         for pattern in patterns:
             resultState = self.findRelaxedState(pattern.copy())
             phi = (np.dot(self.network.weights, pattern))
+            # print(np.linalg.norm(phi))
+            # print(np.exp(-1*np.linalg.norm(phi) / self.temperature))
             weightChanges = weightChanges+np.outer(pattern-resultState, pattern)*np.exp(-1*np.linalg.norm(phi) / self.temperature)
 
         self.temperature -= self.temperatureDecay

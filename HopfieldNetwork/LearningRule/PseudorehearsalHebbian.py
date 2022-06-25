@@ -45,6 +45,9 @@ class PseudorehearsalHebbian(AbstractLearningRule):
         self.keepPreviousWeights = keepPreviousWeights
 
     def __str__(self):
+        return f"PseudorehearsalHebbian"
+
+    def infoString(self):
         if self.numRehearse!=0:
             return f"PseudorehearsalHebbian-{self.numRehearse}NumRehearse {self.updateRehearsalStatesFreq}UpdateFreq {self.numPseudorehearsalSamples}numPseudorehearsalSamples"
         return f"PseudorehearsalHebbian-{self.fracRehearse}FracRehearse {self.updateRehearsalStatesFreq}UpdateFreq {self.numPseudorehearsalSamples}numPseudorehearsalSamples"

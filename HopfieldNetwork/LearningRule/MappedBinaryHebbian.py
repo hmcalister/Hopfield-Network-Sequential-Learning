@@ -23,6 +23,9 @@ class MappedBinaryHebbian(AbstractLearningRule):
     def __str__(self):
         return "MappedBinaryHebbian"
 
+    def infoString(self):
+        return "MappedBinaryHebbian"
+
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
         Learn a set of patterns and return the weights
