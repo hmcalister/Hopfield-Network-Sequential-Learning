@@ -115,15 +115,16 @@ def plotTotalStablePatterns(numStableOverEpochs:List[int], N:int=None, hebbianMa
     plt.figure(figsize=figsize)
 
     plt.plot(numStableOverEpochs)
-    if hebbianMaximumCapacity is not None:
-        plt.axhline(hebbianMaximumCapacity*N, color='r', linestyle='-.', label="Allowable Error Max Constraint")
-    plt.axhline(0.138*N, color='r', linestyle='--', label="Hebbian Max")
+    if N is not None:
+        plt.axhline(0.138*N, color='r', linestyle='--', label="Hebbian Max")
+        if hebbianMaximumCapacity is not None:
+            plt.axhline(hebbianMaximumCapacity*N, color='r', linestyle='-.', label="Allowable Error Max Constraint")
     plt.axhline(max(numStableOverEpochs), color='b', linestyle='--', label="Actual Max")
     plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
     plt.ylim(bottom=-0.05)
     plt.title(title)
     plt.xlabel("Epoch")
-    plt.ylabel("Total stable learned patterns")
+    plt.ylabel("Total stable learned states")
     plt.tight_layout()
     
     if fileName is None:
