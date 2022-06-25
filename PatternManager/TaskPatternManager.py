@@ -23,7 +23,7 @@ class TaskPatternManager():
         self.startEpoch:int = 0
 
     def __str__(self):
-        return f"{self.name}: {len(self.taskPatterns)} Patterns"
+        return f"{self.name}: {len(self.taskPatterns)} States"
 
     def getTaskPatterns(self)->List[np.ndarray]:
         """
