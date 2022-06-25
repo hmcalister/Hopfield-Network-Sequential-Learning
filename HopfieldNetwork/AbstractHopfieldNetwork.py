@@ -256,7 +256,10 @@ class AbstractHopfieldNetwork(ABC):
         # We must have reached a stable state, so we can return this state
         return self.state.copy()
 
-    def compareState(self, state: np.ndarray, allowableHammingDistanceRatio: np.float64 = 0) -> bool:
+    def getInverseState(self, state:np.ndarray) -> np.ndarray:
+        return self.activationFunction(-1*state.copy())
+
+    def compareState(self, state1: np.ndarray, state2:np.ndarray=None, allowableHammingDistanceRatio: np.float64 = 0) -> bool:
         """
         Compares the given state to the state of the network right now
         Returns True if the two states are the same, false otherwise
@@ -271,16 +274,19 @@ class AbstractHopfieldNetwork(ABC):
             bool: True if the given state is the same as the network state, false otherwise
         """
 
-        invertState = self.activationFunction(-1*self.getState())
+        if state2 is None:
+            state2 = self.getState()
+
+        invertState = self.getInverseState(state1)
 
         if allowableHammingDistanceRatio == 0:
             # Generally, a state is equal to itself or the negate of itself.
             # Negate in binary (or with state space centered around 0) has negation as *-1
-            return np.array_equal(self.getState(), state) or np.array_equal(invertState, state)
+            return np.array_equal(state1, state2) or np.array_equal(invertState, state2)
         else:
             hammingDistance = min(
-                self.hammingDistance(self.state, state),
-                self.hammingDistance(invertState, state)
+                self.hammingDistance(state1, state2),
+                self.hammingDistance(invertState, state2)
             )
 
             return hammingDistance <= self.N*allowableHammingDistanceRatio
@@ -299,15 +305,6 @@ class AbstractHopfieldNetwork(ABC):
         Returns:
             np.ndarray: A copy of the original state with a number of units flipped
         """
-
-        # numFlip = int(np.ceil(inverseRatio*state.shape[0]))
-        # newState = state.copy()
-        # donorPattern = self.generatePattern()
-        # numFlip = int(np.ceil(inverseRatio*newState.shape[0]))
-        # flipIndices = np.arange(newState.shape[0])
-        # np.random.shuffle(flipIndices)
-        # flipIndices = flipIndices[:numFlip]
-        # np.put(newState, flipIndices, donorPattern)
 
         maxFlip = int(np.ceil(inverseRatio*state.shape[0]))
         numFlip = np.random.randint(0, maxFlip+1)
@@ -386,7 +383,7 @@ class AbstractHopfieldNetwork(ABC):
                 pass
 
             # If the relaxed state is the same as the pattern, we have a stable state
-            if not self.compareState(pattern, self.allowableLearningStateError):
+            if not self.compareState(pattern, allowableHammingDistanceRatio=self.allowableLearningStateError):
                 # If we are not stable on even a single pattern, we must carry on
                 return False
         return True
@@ -441,7 +438,7 @@ class AbstractHopfieldNetwork(ABC):
                     pass
 
                 # If the relaxed state is the same as the pattern, we have a stable state
-                if self.compareState(pattern, self.allowableLearningStateError):
+                if self.compareState(pattern, allowableHammingDistanceRatio=self.allowableLearningStateError):
                     taskAccuracy += 1
                     numStable += 1
             # Task accuracy is scaled to a fraction of total of this tasks patterns
