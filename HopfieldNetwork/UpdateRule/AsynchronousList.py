@@ -32,6 +32,7 @@ class AsynchronousList(AbstractUpdateRule):
         updateOrder = np.arange(currentState.shape[0])
         np.random.shuffle(updateOrder)
 
+        # print(f"{updateOrder=}")
 
         # For each index in order
         for updateIndex in updateOrder:

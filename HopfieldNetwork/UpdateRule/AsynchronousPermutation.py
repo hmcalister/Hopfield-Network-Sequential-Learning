@@ -33,7 +33,8 @@ class AsynchronousPermutation(AbstractUpdateRule):
         # Calculate the energy of the units
         energies = self.energyFunction(currentState, weights)
         # ANd note only the energies above 0 (unstable)
-        updateOrder = np.where(energies>=0)
+        updateOrder = np.where(energies>=0)[0]
+        # updateOrder = np.arange(currentState.shape[0])
         # Then permute this order
         np.random.shuffle(updateOrder)
 
@@ -43,11 +44,13 @@ class AsynchronousPermutation(AbstractUpdateRule):
         # For each index to be updated
         for updateIndex in updateOrder:
             noiseVector = self.inputNoise(nextState)
+            # print(f"BEFORE:{nextState[updateIndex]}")
 
             # Update that index
             nextState[updateIndex] = self.activationFunction(
                 np.dot(weights[updateIndex], nextState+noiseVector)
             )
+            # print(f"AFTER:{nextState[updateIndex]}")
     
         return nextState
 

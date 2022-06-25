@@ -26,7 +26,7 @@ class Synchronous(AbstractUpdateRule):
             np.ndarray: The next state of the network
         """
 
-        noiseVector = self.inputNoise(nextState)
+        noiseVector = self.inputNoise(currentState)
 
         # Update the entire unit vector at once and return it
         nextState = self.activationFunction(np.dot(weights, currentState+noiseVector))
