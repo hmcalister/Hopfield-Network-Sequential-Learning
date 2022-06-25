@@ -3,15 +3,17 @@ import HopfieldNetwork
 import PatternManager
 from HopfieldUtils import *
 import numpy as np
+from prettytable import PrettyTable
 
 np.set_printoptions(precision=2)
 N = 64
-NUMBER_RUNS = 10
-MAX_EPOCHS = 1000
+NUMBER_RUNS = 1
+MAX_EPOCHS = 500
 TEMPERATURE = 1000
 DECAY_RATE = np.round((1) * (TEMPERATURE/MAX_EPOCHS),3)
+PSEUDOITEMS = 2048
 
-numPatternsByTask = [40]
+numPatternsByTask = [20]
 numPatternsByTask.extend([1 for _ in range(4)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
@@ -30,31 +32,33 @@ learning_rules = [
     # (HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, updateRehearsalStatesFreq="Epoch"), "Rehearsal"),
 
     # (HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, trainUntilStable=False,
-    #     numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
+    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
     #     requireUniquePseudoitems=True, rejectLearnedStatesAsPseudoitems=False),
     # "Pseudorehearsal"),
 
     # (HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, trainUntilStable=False,
-    #     numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
+    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
     #     requireUniquePseudoitems=True, rejectLearnedStatesAsPseudoitems=True),
     # "Spurious Pseudorehearsal"),
 
-    (HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE), "Thermal Delta"),
 
-    (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-        fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Thermal Rehearsal"),
 
-    (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-        fracRehearse=1, trainUntilStable=False,
-        numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", 
-        keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-        rejectLearnedStatesAsPseudoitems=False), "Thermal Pseudorehearsal"),
+    # (HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE), "Vanilla"),
+
+    # (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+    #     fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Rehearsal"),
 
     (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
         fracRehearse=1, trainUntilStable=False,
-        numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", 
+        numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
         keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-        rejectLearnedStatesAsPseudoitems=True), "Spurious Thermal Pseudorehearsal")
+        rejectLearnedStatesAsPseudoitems=False), "Pseudorehearsal"),
+
+    # (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+    #     fracRehearse=1, trainUntilStable=False,
+    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
+    #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+    #     rejectLearnedStatesAsPseudoitems=True), "Spurious Pseudorehearsal")
 ]
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.02
@@ -71,7 +75,7 @@ for learningRule in learning_rules:
     currLearningRuleResults = np.zeros(shape=(len(numPatternsByTask)*MAX_EPOCHS, len(numPatternsByTask)))
     run = 0
     while run < NUMBER_RUNS:
-        print(f"RUN: {run+1}/{NUMBER_RUNS}")
+        print(f"{learningRule[1]} RUN: {run+1}/{NUMBER_RUNS}")
         # SETUP ---------------------------------------------------------------------------------------------------------------
         # Create network
         network = HopfieldNetwork.GeneralHopfieldNetwork(
@@ -81,7 +85,8 @@ for learningRule in learning_rules:
             updateRule=updateRule,
             learningRule=copy.deepcopy(learningRule[0]),
             allowableLearningStateError=allowableLearningStateError,
-            patternManager=patternManager
+            patternManager=patternManager,
+            weights=np.random.normal(size=(N,N))
         )
 
         # numPatternsByTask.extend([1 for i in range(10)])
@@ -94,8 +99,8 @@ for learningRule in learning_rules:
         seenPatterns = []
 
         # Print network details
-        print(network.getNetworkDescriptionString())
-        print()
+        # print(network.getNetworkDescriptionString())
+        # print()
 
         # TRAINING ------------------------------------------------------------------------------------------------------------
         for task in tasks:
@@ -135,11 +140,21 @@ plt.figure(figsize=(12,6))
 for i in range(len(results_by_learning_rule)):
     plt.plot(results_by_learning_rule[i], label=learning_rules[i][1])
 
-plt.title(f"Average results of first task by learning rule")
-plt.xlabel("Epochs")
-plt.ylabel("Average Task Accuracy")
+for i in range(len(numPatternsByTask)):
+    plt.axvline(MAX_EPOCHS*i, color=(0, 0, 0, 0.5), linestyle='--', linewidth=0.75)
+    plt.text(MAX_EPOCHS*(2*i+1)/2, 0.0, f"Task {i}\n{numPatternsByTask[i]} State{'s' if numPatternsByTask[i]>1 else ''}", horizontalalignment="center")
+
+plt.title(f"Stability of Task 0 by Learning Rule")
+plt.xlabel("Epoch")
+plt.ylabel("Task 0 Accuracy")
 plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
 plt.ylim(-0.05, 1.05)
 plt.tight_layout()
 
 plt.show()
+
+# PRINT DATA
+t = PrettyTable(["Task 0 Stability at end of task"]+[learning_rules[i][1] for i in range(len(learning_rules))])
+for i in range(len(numPatternsByTask)):
+    t.add_row([f"Task {i}: {numPatternsByTask[i]} State{'s' if numPatternsByTask[i]>1 else ''}"] + [np.round(results_by_learning_rule[lr][MAX_EPOCHS*(i+1)-1], 5) for lr in range(len(learning_rules))])
+print(t)

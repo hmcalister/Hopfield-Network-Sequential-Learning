@@ -5,10 +5,10 @@ import numpy as np
 
 np.set_printoptions(precision=1)
 np.set_printoptions(suppress=True)
-N = 100
+N = 64
 
 numPatternsByTask = [20]
-numPatternsByTask.extend([1 for _ in range(5)])
+numPatternsByTask.extend([1 for _ in range(3)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
 # Pattern generation params ---------------------------------------------------
@@ -18,11 +18,12 @@ patternManager = PatternManager.SequentialLearningPatternManager(N, mappingFunct
 # Network params---------------------------------------------------------------
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
+# updateRule = HopfieldNetwork.UpdateRule.Synchronous(activationFunction)
 # updateRule = HopfieldNetwork.UpdateRule.AsynchronousList(activationFunction)
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 
 
-EPOCHS=1000
+EPOCHS=100
 # learningRule = HopfieldNetwork.LearningRule.Hebbian()
 # learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=EPOCHS, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
 # learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=EPOCHS, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
@@ -35,20 +36,20 @@ EPOCHS=1000
 #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
 #     rejectLearnedStatesAsPseudoitems=False)
 
-TEMPERATURE = 500
+TEMPERATURE = 1000
 DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS),3)
 # learningRule = HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE)
 # learningRule = HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, 
 #     temperatureDecay=DECAY_RATE,
-#     numRehearse=3, updateRehearsalStatesFreq="Epoch")
+#     fracRehearse=1, updateRehearsalStatesFreq="Epoch")
 learningRule = HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE, 
     fracRehearse=1, trainUntilStable=False,
-    numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch", 
+    numPseudorehearsalSamples=2048, updateRehearsalStatesFreq="Epoch", 
     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-    rejectLearnedStatesAsPseudoitems=False)
+    rejectLearnedStatesAsPseudoitems=True)
 
 # Network noise/error params --------------------------------------------------
-allowableLearningStateError = 0.01
+allowableLearningStateError = 0.02
 inputNoise = None
 heteroassociativeNoiseRatio = 0.05
 
@@ -110,24 +111,24 @@ for task in tasks:
 
 
 # GRAPHING ------------------------------------------------------------------------------------------------------------
-titleBasis = f"Bipolar {network.N} Unit\n {network.learningRule}\n {network.allowableLearningStateError} Allowable Stability Error, {heteroassociativeNoiseRatio} Heteroassociative Noise"
-fileNameBasis = f"{network.N}Bipolar-{network.learningRule}-{network.allowableLearningStateError}AllowableStabilityError-{heteroassociativeNoiseRatio}-HeteroassociativeNoise"
+titleBasis = f"{network.N} Neuron, {network.learningRule}\n{network.allowableLearningStateError} Allowable Stability Error\n{heteroassociativeNoiseRatio} Heteroassociative Noise"
+fileNameBasis = f"{network.N}Bipolar-{network.learningRule.infoString()}-{network.allowableLearningStateError}AllowableStabilityError-{heteroassociativeNoiseRatio}HeteroassociativeNoise"
 taskEpochBoundaries = [task.startEpoch for task in tasks]
 
 plotSingleTaskStability(taskPatternStabilities[:, 0]*(len(tasks[0].taskPatterns)), taskEpochBoundaries[0],
-    title=f"{titleBasis}\n Stability of {str(tasks[0])}",
+    title=f"{titleBasis}\n Stability of First Task",
     legend=[str(tasks[0])], figsize=(12,6),
     fileName=f"graphs/{fileNameBasis}--StabilityOfTask0.png"
     )
 
-plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, 
+plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
     title=f"{titleBasis}\n Stability by Task",
     legend=[str(task) for task in tasks], figsize=(12,6),
     fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
     )
 
-plotTotalStablePatterns(numStableOverEpochs, N,
-    title=f"{titleBasis}\n Total Stable Patterns", 
+plotTotalStablePatterns(numStableOverEpochs,
+    title=f"{titleBasis}\n Total Stable States", 
     figsize=(12,6),
     fileName=f"graphs/{fileNameBasis}--TotalStablePatterns.png"
     )
