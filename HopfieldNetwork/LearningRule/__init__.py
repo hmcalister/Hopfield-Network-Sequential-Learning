@@ -1,3 +1,5 @@
+from . import EWCTerm
+
 from .AbstractLearningRule import AbstractLearningRule
 
 from .Hebbian import Hebbian
@@ -12,3 +14,5 @@ from .PseudorehearsalDelta import PseudorehearsalDelta
 from .ThermalDelta import ThermalDelta
 from .RehearsalThermalDelta import RehearsalThermalDelta
 from .PseudorehearsalThermalDelta import PseudorehearsalThermalDelta
+
+from .ElasticWeightConsolidationThermalDelta import ElasticWeightConsolidationThermalDelta
