@@ -1,3 +1,8 @@
+import sys
+import os.path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
 import copy
 import HopfieldNetwork
 import PatternManager
@@ -27,26 +32,11 @@ activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeavis
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 
 learning_rules = [
-    # (HopfieldNetwork.LearningRule.Delta(maxEpochs=MAX_EPOCHS), "Vanilla Delta"),
 
-    # (HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, updateRehearsalStatesFreq="Epoch"), "Rehearsal"),
+    (HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE), "Vanilla"),
 
-    # (HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, trainUntilStable=False,
-    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
-    #     requireUniquePseudoitems=True, rejectLearnedStatesAsPseudoitems=False),
-    # "Pseudorehearsal"),
-
-    # (HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=MAX_EPOCHS, fracRehearse=1, trainUntilStable=False,
-    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", keepFirstTaskPseudoitems=True,
-    #     requireUniquePseudoitems=True, rejectLearnedStatesAsPseudoitems=True),
-    # "Spurious Pseudorehearsal"),
-
-
-
-    # (HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE), "Vanilla"),
-
-    # (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-    #     fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Rehearsal"),
+    (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+        fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Rehearsal"),
 
     (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
         fracRehearse=1, trainUntilStable=False,
@@ -54,11 +44,19 @@ learning_rules = [
         keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
         rejectLearnedStatesAsPseudoitems=False), "Pseudorehearsal"),
 
-    # (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-    #     fracRehearse=1, trainUntilStable=False,
-    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
-    #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-    #     rejectLearnedStatesAsPseudoitems=True), "Spurious Pseudorehearsal")
+    (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+        fracRehearse=1, trainUntilStable=False,
+        numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
+        keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+        rejectLearnedStatesAsPseudoitems=True), "Spurious Pseudorehearsal"),
+
+
+
+
+    # (HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
+    #     maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
+    #     ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm, ewcLambda=0.005,
+    #     useOnlyFirstEWCTerm=True), "EWC - Omega=1"),
 ]
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.02
@@ -68,7 +66,6 @@ heteroassociativeNoiseRatio = 0.05
 
 # Array for each learning rule results
 results_by_learning_rule = []
-
 
 for learningRule in learning_rules:
     
