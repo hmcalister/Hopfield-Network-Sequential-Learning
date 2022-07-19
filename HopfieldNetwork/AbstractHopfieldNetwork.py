@@ -8,7 +8,7 @@ from .UpdateRule.ActivationFunction.AbstractActivationFunction import AbstractAc
 from .LearningRule.AbstractLearningRule import AbstractLearningRule
 
 import numpy as np
-
+np.set_printoptions(precision=2, floatmode="fixed")
 
 class RelaxationException(Exception):
     """
@@ -577,7 +577,7 @@ class AbstractHopfieldNetwork(ABC):
             if self.learningRule.maxEpochs > 1:
                 if len(taskAccuracies) > 0 and len(allTaskPatterns) < 20:
                 # Notice we add a large number of spaces on the end, to nicely overwrite any older lines
-                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {taskAccuracies[-1]}"+" "*80, end="\r")
+                    print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs} : {np.array(taskAccuracies[-1])}"+" "*80, end="\r")
                 else:
                     print(f"Epoch: {currentTaskEpochs}/{self.learningRule.maxEpochs}"+" "*80, end="\r")
 
