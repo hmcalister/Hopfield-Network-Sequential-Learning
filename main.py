@@ -7,8 +7,8 @@ np.set_printoptions(precision=2)
 np.set_printoptions(suppress=True)
 N = 64
 
-numPatternsByTask = [20]
-numPatternsByTask.extend([1 for _ in range(3)])
+numPatternsByTask = [50]
+numPatternsByTask.extend([1 for _ in range(5)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
 # Pattern generation params ---------------------------------------------------
@@ -50,7 +50,7 @@ DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS),3)
 
 learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
         maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
-        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm, ewcLambda=0.005,
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm, ewcLambda=0.05,
         useOnlyFirstEWCTerm=True)
 
 # Network noise/error params --------------------------------------------------
@@ -120,17 +120,17 @@ titleBasis = f"{network.N} Neuron, {network.learningRule}\n{network.allowableLea
 fileNameBasis = f"{network.N}Bipolar-{network.learningRule.infoString()}-{network.allowableLearningStateError}AllowableStabilityError-{heteroassociativeNoiseRatio}HeteroassociativeNoise"
 taskEpochBoundaries = [task.startEpoch for task in tasks]
 
-# plotSingleTaskStability(taskPatternStabilities[:, 0]*(len(tasks[0].taskPatterns)), taskEpochBoundaries[0],
-#     title=f"{titleBasis}\n Stability of First Task",
-#     legend=[str(tasks[0])], figsize=(12,6),
-#     fileName=f"graphs/{fileNameBasis}--StabilityOfTask0.png"
-#     )
-
-plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
-    title=f"{titleBasis}\n Stability by Task",
-    legend=[str(task) for task in tasks], figsize=(12,6),
-    fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
+plotSingleTaskStability(taskPatternStabilities[:, 0]*(len(tasks[0].taskPatterns)), taskEpochBoundaries[0],
+    title=f"{titleBasis}\n Stability of First Task",
+    legend=[str(tasks[0])], figsize=(12,6),
+    fileName=f"graphs/{fileNameBasis}--StabilityOfTask0.png"
     )
+
+# plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
+#     title=f"{titleBasis}\n Stability by Task",
+#     legend=[str(task) for task in tasks], figsize=(12,6),
+#     fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
+#     )
 
 # plotTotalStablePatterns(numStableOverEpochs,
 #     title=f"{titleBasis}\n Total Stable States", 
