@@ -56,7 +56,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.ewcTerms:List[AbstractEWCTerm] = []
 
     def __str__(self):
-        return f"ElasticWeightConsolidationThermalDelta({self.ewcTermGenerator})"
+        return f"EWC Learning"
 
     def infoString(self):
         return f"ElasticWeightConsolidationThermalDelta-{self.maxEpochs} MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay {self.ewcTermGenerator.toString()}"
@@ -94,16 +94,28 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         ewcNumerator = np.zeros_like(vanillaTerm)
         ewcDenominator = np.zeros_like(vanillaTerm)
         for e in self.ewcTerms:
+            # vanillaTerm = np.zeros_like(self.network.weights)
             importance = e.getImportance()
             ewcNumerator += importance * e.getTaskWeights()
             ewcDenominator += importance
+            # print(f"ewcNumerator:\n{ewcNumerator}")
+            # print(f"ewcDenominator:\n{ewcDenominator}")
+            # print(f"Numerator:\n{(vanillaTerm + self.ewcLambda * ewcNumerator)}")
+            # print(f"Denominator:\n{(1 + self.ewcLambda * ewcDenominator)}")
+            # print(f"vanillaTerm:\n{vanillaTerm}")
+            # print(f"taskWeights:\n{e.getTaskWeights()}")
+            # print(f"Result:\n{(vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)}")
+            # exit()
+
 
         weight = np.zeros_like(self.network.weights)
+        # weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)
+        # weight[weight==np.inf] = vanillaTerm[weight==np.inf]
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
             try:
                 weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)
-                weight[weight==np.inf] = vanillaTerm[weight==np.inf]
+                # weight[weight==np.inf] = vanillaTerm[weight==np.inf]
             except Exception as e:
                 print(f"\n\n{e}")
                 print(f"Numerator:\n{(vanillaTerm + self.ewcLambda * ewcNumerator)}")
@@ -135,6 +147,6 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.numStatesLearned+=len(taskPatterns)
         if not self.useOnlyFirstEWCTerm or len(self.ewcTerms)==0:
             self.ewcTerms.append(
-                self.ewcTermGenerator(self.network.weights.copy(), taskPatterns)
+                self.ewcTermGenerator(self.network.weights.copy(), taskPatterns.copy())
             )
         # print(self.ewcTerms)

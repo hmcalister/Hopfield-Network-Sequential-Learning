@@ -13,7 +13,6 @@ class AbstractEWCTerm(ABC):
             network (HopfieldNetwork, optional): A reference to the Hopfield network, defaults to None
         """
         self.taskWeights = taskWeights.copy()
-        self.taskPatterns = taskPatterns
         self.network = network
         self.importance = np.zeros_like(self.taskWeights)
         pass
