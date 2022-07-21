@@ -13,45 +13,47 @@ numPatternsByTask.extend([1 for _ in range(3)])
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
 # Pattern generation params ---------------------------------------------------
 mappingFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
-patternManager = PatternManager.SequentialLearningPatternManager(N, mappingFunction)
+patternManager = PatternManager.SequentialLearningPatternManager(
+    N, mappingFunction)
 
 # Network params---------------------------------------------------------------
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 # updateRule = HopfieldNetwork.UpdateRule.Synchronous(activationFunction)
 # updateRule = HopfieldNetwork.UpdateRule.AsynchronousList(activationFunction)
-updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
+updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(
+    activationFunction, energyFunction)
 
 
-EPOCHS=500
+EPOCHS = 500
 # learningRule = HopfieldNetwork.LearningRule.Hebbian()
 # learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=EPOCHS, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
 # learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=EPOCHS, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
 
 # learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=EPOCHS)
 # learningRule = HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=EPOCHS, numRehearse=3, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=EPOCHS, 
+# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=EPOCHS,
 #     fracRehearse=1, trainUntilStable=False,
 #     numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch",
 #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
 #     rejectLearnedStatesAsPseudoitems=False)
 
 TEMPERATURE = 1000
-DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS),3)
+DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS), 3)
 # learningRule = HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE)
-# learningRule = HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, 
+# learningRule = HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE,
 #     temperatureDecay=DECAY_RATE,
 #     fracRehearse=1, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE, 
+# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
 #     fracRehearse=1, trainUntilStable=False,
-#     numPseudorehearsalSamples=2048, updateRehearsalStatesFreq="Epoch", 
-#     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+#     numPseudorehearsalSamples=2048, updateRehearsalStatesFreq="Epoch",
+#     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
 #     rejectLearnedStatesAsPseudoitems=True)
 
 learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
-        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
-        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm, ewcLambda=0.005,
-        useOnlyFirstEWCTerm=True)
+    maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
+    ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm, ewcLambda=0.005,
+    useOnlyFirstEWCTerm=True)
 
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.02
@@ -68,7 +70,7 @@ network = HopfieldNetwork.GeneralHopfieldNetwork(
     learningRule=learningRule,
     allowableLearningStateError=allowableLearningStateError,
     patternManager=patternManager,
-    weights=np.random.normal(size=(N,N))
+    weights=np.random.normal(size=(N, N))
 )
 
 tasks = patternManager.createTasks(
@@ -90,7 +92,7 @@ print()
 # TRAINING ------------------------------------------------------------------------------------------------------------
 for task in tasks:
     seenPatterns.extend(task.getTaskPatterns())
-    
+
     print(f"{task}")
     # print(f"Task Patterns:")
     # for pattern in task.getTaskPatterns():
@@ -100,15 +102,16 @@ for task in tasks:
     task.startEpoch = network.epochs
     # Learn the patterns
     accuracies, numStable = network.learnPatterns(
-        patterns=task.taskPatterns, 
-        allTaskPatterns=patternManager.allTaskPatterns, 
-        heteroassociativeNoiseRatio=heteroassociativeNoiseRatio, 
+        patterns=task.taskPatterns,
+        allTaskPatterns=patternManager.allTaskPatterns,
+        heteroassociativeNoiseRatio=heteroassociativeNoiseRatio,
         inputNoise=inputNoise
     )
 
     # print(f"Network Weights:\n{network.weights}")
 
-    taskPatternStabilities = np.vstack([taskPatternStabilities, accuracies.copy()])
+    taskPatternStabilities = np.vstack(
+        [taskPatternStabilities, accuracies.copy()])
     numStableOverEpochs.extend(numStable)
 
     print(f"Most Recent Epoch Stable States: {numStable[-1]}")
@@ -127,25 +130,25 @@ taskEpochBoundaries = [task.startEpoch for task in tasks]
 #     )
 
 plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
-    title=f"{titleBasis}\n Stability by Task",
-    legend=[str(task) for task in tasks], figsize=(12,6),
-    fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
-    )
+                         title=f"{titleBasis}\n Stability by Task",
+                         legend=[str(task) for task in tasks], figsize=(12, 6),
+                         fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
+                         )
 
 # plotTotalStablePatterns(numStableOverEpochs,
-#     title=f"{titleBasis}\n Total Stable States", 
+#     title=f"{titleBasis}\n Total Stable States",
 #     figsize=(12,6),
 #     fileName=f"graphs/{fileNameBasis}--TotalStablePatterns.png"
 #     )
 
-saveDataAsJSON(f"data/{fileNameBasis}.json", 
-    networkDescription = network.getNetworkDescriptionJSON(),
-    trainingInformation= {
-        "inputNoise": inputNoise,
-        "heteroassociativeNoiseRatio": heteroassociativeNoiseRatio
-    },
-    taskPatternStabilities = taskPatternStabilities.tolist(),
-    taskEpochBoundaries = taskEpochBoundaries,
-    numStableOverEpochs = numStableOverEpochs,
-    weights=network.weights.tolist(),
-    tasks=[np.array(task.taskPatterns).tolist() for task in patternManager.taskPatternManagers])
+saveDataAsJSON(f"data/{fileNameBasis}.json",
+               networkDescription=network.getNetworkDescriptionJSON(),
+               trainingInformation={
+                   "inputNoise": inputNoise,
+                   "heteroassociativeNoiseRatio": heteroassociativeNoiseRatio
+               },
+               taskPatternStabilities=taskPatternStabilities.tolist(),
+               taskEpochBoundaries=taskEpochBoundaries,
+               numStableOverEpochs=numStableOverEpochs,
+               weights=network.weights.tolist(),
+               tasks=[np.array(task.taskPatterns).tolist() for task in patternManager.taskPatternManagers])
