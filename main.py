@@ -7,7 +7,7 @@ np.set_printoptions(precision=2)
 np.set_printoptions(suppress=True)
 N = 64
 
-numPatternsByTask = [50]
+numPatternsByTask = [20]
 numPatternsByTask.extend([1 for _ in range(5)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
@@ -51,8 +51,8 @@ DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS), 3)
 #     rejectLearnedStatesAsPseudoitems=True)
 
 learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
-        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
-        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm, ewcLambda=0.05,
+        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0,
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm, ewcLambda=1.,
         useOnlyFirstEWCTerm=True)
 
 # Network noise/error params --------------------------------------------------
@@ -147,14 +147,14 @@ plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBo
 #     fileName=f"graphs/{fileNameBasis}--TotalStablePatterns.png"
 #     )
 
-saveDataAsJSON(f"data/{fileNameBasis}.json",
-               networkDescription=network.getNetworkDescriptionJSON(),
-               trainingInformation={
-                   "inputNoise": inputNoise,
-                   "heteroassociativeNoiseRatio": heteroassociativeNoiseRatio
-               },
-               taskPatternStabilities=taskPatternStabilities.tolist(),
-               taskEpochBoundaries=taskEpochBoundaries,
-               numStableOverEpochs=numStableOverEpochs,
-               weights=network.weights.tolist(),
-               tasks=[np.array(task.taskPatterns).tolist() for task in patternManager.taskPatternManagers])
+# saveDataAsJSON(f"data/{fileNameBasis}.json",
+#                networkDescription=network.getNetworkDescriptionJSON(),
+#                trainingInformation={
+#                    "inputNoise": inputNoise,
+#                    "heteroassociativeNoiseRatio": heteroassociativeNoiseRatio
+#                },
+#                taskPatternStabilities=taskPatternStabilities.tolist(),
+#                taskEpochBoundaries=taskEpochBoundaries,
+#                numStableOverEpochs=numStableOverEpochs,
+#                weights=network.weights.tolist(),
+#                tasks=[np.array(task.taskPatterns).tolist() for task in patternManager.taskPatternManagers])
