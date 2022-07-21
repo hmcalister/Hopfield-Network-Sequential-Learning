@@ -1,14 +1,16 @@
-fns = [
-    lambda x: x+1,
-    lambda x: x+2,
-    lambda x: x+3,
-    lambda x: x+4,
-]
+import numpy as np
 
-def get_loss_function():
-    def loss_function(x):
-        loss = 0
-        for f in fns:
-            loss+=f(x)
-        return loss
-    return loss_function
+w_e = np.array([[1,1,1],[1,2,4],[3,3,3],])
+w_v = np.array([[0,0,0],[0,0,0],[0,0,0],])
+
+l = 1
+o = np.array([[1,1,1],[0,2,2],[0,1,1],])
+
+w = (w_v + l*o*w_e) / (1+l*o)
+
+print(o)
+print(w_e)
+print()
+print(o*w_e)
+print()
+print(w)
