@@ -3,15 +3,17 @@ from abc import ABC, abstractmethod
 
 class AbstractEWCTerm(ABC):
     @abstractmethod
-    def __init__(self, task_weights, network=None):
+    def __init__(self, taskWeights, taskPatterns, network=None):
         """
         Init any variables for this importance calculation
 
         Args:
-            task_weights (np.array): The weights found at the end of this task
+            taskWeights (np.array): The weights found at the end of this task
+            taskPatterns (np.ndarray): The patterns for this task
             network (HopfieldNetwork, optional): A reference to the Hopfield network, defaults to None
         """
-        self.taskWeights = task_weights.copy()
+        self.taskWeights = taskWeights.copy()
+        self.taskPatterns = taskPatterns
         self.network = network
         self.importance = np.zeros_like(self.taskWeights)
         pass

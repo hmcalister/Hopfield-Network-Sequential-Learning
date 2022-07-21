@@ -56,7 +56,6 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.ewcTerms:List[AbstractEWCTerm] = []
 
     def __str__(self):
-            
         return f"ElasticWeightConsolidationThermalDelta({self.ewcTermGenerator})"
 
     def infoString(self):
@@ -95,8 +94,9 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         ewcNumerator = np.zeros_like(vanillaTerm)
         ewcDenominator = np.zeros_like(vanillaTerm)
         for e in self.ewcTerms:
-            ewcNumerator += e.getImportance() * e.getTaskWeights()
-            ewcDenominator += e.getImportance()
+            importance = e.getImportance()
+            ewcNumerator += importance * e.getTaskWeights()
+            ewcDenominator += importance
 
         weight = np.zeros_like(self.network.weights)
         with warnings.catch_warnings():
@@ -111,6 +111,11 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
                 print(f"ewcNumerator:\n{ewcNumerator}")
                 print(f"ewcDenominator:\n{ewcDenominator}")
                 exit()
+
+        # Normalize the new weight matrix to avoid explosions
+        # weight_magnitude = np.sum(np.abs(weight))
+        # if weight_magnitude!=0:
+        #     weight = weight / weight_magnitude
         # print(weight)
         self.temperature -= self.temperatureDecay
         self.numEpochs+=1
@@ -128,5 +133,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.temperature = self.initTemperature
         self.numStatesLearned+=len(taskPatterns)
         if not self.useOnlyFirstEWCTerm or len(self.ewcTerms)==0:
-            self.ewcTerms.append(self.ewcTermGenerator(self.network.weights.copy()))
+            self.ewcTerms.append(
+                self.ewcTermGenerator(self.network.weights.copy(), taskPatterns)
+            )
         # print(self.ewcTerms)
