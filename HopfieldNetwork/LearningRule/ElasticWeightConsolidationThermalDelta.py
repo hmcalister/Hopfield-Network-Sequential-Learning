@@ -103,6 +103,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             warnings.filterwarnings('error')
             try:
                 weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)
+                weight[weight==np.inf] = vanillaTerm[weight==np.inf]
             except Exception as e:
                 print(f"\n\n{e}")
                 print(f"Numerator:\n{(vanillaTerm + self.ewcLambda * ewcNumerator)}")
