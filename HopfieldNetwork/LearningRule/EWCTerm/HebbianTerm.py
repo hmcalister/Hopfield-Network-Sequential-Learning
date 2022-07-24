@@ -6,10 +6,10 @@ class HebbianTerm(AbstractEWCTerm):
         super().__init__(taskWeights, taskPatterns, network)
         self.importance = np.zeros_like(self.taskWeights)
         for pattern in taskPatterns:
-            self.importance = self.importance+np.outer(pattern, pattern)
+            self.importance = self.importance+np.outer(0.5*pattern+0.5, 0.5*pattern+0.5)
         np.fill_diagonal(self.importance, 0)
         self.importance = np.abs(self.importance)
-        self.importance += np.average(self.importance)/np.size(self.importance)
+        # self.importance += np.average(self.importance)/np.size(self.importance)
         print(self.importance)
         print(np.sum(self.importance))
         
