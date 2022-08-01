@@ -51,8 +51,8 @@ DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS), 3)
 #     rejectLearnedStatesAsPseudoitems=True)
 
 learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
-        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.9*DECAY_RATE,
-        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm, ewcLambda=0.005,
+        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.SignCounterTerm(), ewcLambda=0.01,
         useOnlyFirstEWCTerm=True)
 
 # Network noise/error params --------------------------------------------------
