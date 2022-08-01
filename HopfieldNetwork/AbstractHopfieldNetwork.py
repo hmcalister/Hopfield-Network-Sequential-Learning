@@ -88,6 +88,8 @@ class AbstractHopfieldNetwork(ABC):
         self.allowableLearningStateError = allowableLearningStateError
         self.patternManager = patternManager
 
+        self.learningRule.setNetworkReference(self)
+
         # The total number of epochs we have trained for
         self.epochs = 0
 

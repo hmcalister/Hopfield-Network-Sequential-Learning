@@ -1,9 +1,18 @@
 import numpy as np
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 class AbstractEWCTerm(ABC):
+
     @abstractmethod
-    def __init__(self, taskWeights, taskPatterns, network=None):
+    def __init__(self):
+        """Create a new generator for terms"""
+
+    def setNetworkReference(self, network):
+        self.network = network
+
+    @abstractmethod
+    def generateTerm(self, taskWeights, taskPatterns, **kwargs):
         """
         Init any variables for this importance calculation
 
@@ -12,23 +21,41 @@ class AbstractEWCTerm(ABC):
             taskPatterns (np.ndarray): The patterns for this task
             network (HopfieldNetwork, optional): A reference to the Hopfield network, defaults to None
         """
-        self.taskWeights = taskWeights.copy()
-        self.network = network
-        self.importance = np.zeros_like(self.taskWeights)
         pass
 
-    def getImportance(self):
-        return self.importance.copy()
+    def startTask(self, **kwargs):
+        """
+        Do some tidy up before the epoch, reset vars etc
+        """
+        pass
 
-    def getTaskWeights(self):
-        return self.taskWeights.copy()
+    def epochCalculation(self, **kwargs):
+        """
+        Do some calculations for this term at the epoch level
+        """
+        pass
 
-    @classmethod
+    def finishTask(self, **kwargs):
+        """
+        Finish/reset any epoch level calculations
+        """
+        pass
+
     @abstractmethod
-    def __str__(cls):
+    def __str__(self):
         return "AbstractEWCTermGenerator"
 
-    @classmethod
     @abstractmethod
-    def toString(cls):
+    def toString(self):
         return "AbstractEWCTermGenerator"
+
+    @dataclass
+    class EWCTerm:
+        importance: np.ndarray
+        taskWeights: np.ndarray
+
+        def getImportance(self):
+            return self.importance.copy()
+
+        def getTaskWeights(self):
+            return self.taskWeights.copy()

@@ -2,14 +2,17 @@ import numpy as np
 from .AbstractEWCTerm import AbstractEWCTerm
 
 class WeightDecayTerm(AbstractEWCTerm):
-    def __init__(self, taskWeights, taskPatterns, network=None):
-        super().__init__(taskWeights, taskPatterns, network)
-        self.importance = np.ones_like(self.taskWeights)
+    def __init__(self):
+        pass
 
-    @classmethod
-    def __str__(cls):
+    def generateTerm(self, taskWeights, taskPatterns):
+        importance = np.ones_like(taskWeights)
+        return self.EWCTerm(importance, taskWeights)
+
+    
+    def __str__(self):
         return "WeightDecayTermGenerator"
 
-    @classmethod
-    def toString(cls):
+    
+    def toString(self):
         return "WeightDecayTermGenerator"

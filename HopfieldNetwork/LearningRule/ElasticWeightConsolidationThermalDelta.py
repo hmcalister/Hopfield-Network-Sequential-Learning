@@ -1,9 +1,8 @@
-import warnings
 from HopfieldNetwork.LearningRule.EWCTerm import *
 from .AbstractLearningRule import AbstractLearningRule
 from .EWCTerm.AbstractEWCTerm import AbstractEWCTerm
 from .EWCTerm.NoneEWCTerm import NoneEWCTerm
-from typing import List, Type
+from typing import List
 import numpy as np
 
 np.set_printoptions(precision=2)
@@ -12,7 +11,7 @@ np.set_printoptions(suppress=True)
 class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
 
     def __init__(self, maxEpochs:int=100, trainUntilStable:bool=False, temperature:np.float64 = 1, temperatureDecay:np.float64=0, 
-        ewcTermGenerator:Type[AbstractEWCTerm]=NoneEWCTerm, ewcLambda:np.float64 = 0,
+        ewcTermGenerator:AbstractEWCTerm=NoneEWCTerm, ewcLambda:np.float64 = 0,
         useOnlyFirstEWCTerm:bool=False):
         """
         Create a new ThermalDelta Learning Rule
@@ -53,13 +52,19 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.ewcTermGenerator = ewcTermGenerator
         self.ewcLambda = ewcLambda
         self.useOnlyFirstEWCTerm = useOnlyFirstEWCTerm
-        self.ewcTerms:List[AbstractEWCTerm] = []
+        self.ewcTerms:List[AbstractEWCTerm.EWCTerm] = []
+
+        self.ewcTermGenerator.startTask()
 
     def __str__(self):
         return f"EWC Learning"
 
     def infoString(self):
         return f"ElasticWeightConsolidationThermalDelta-{self.maxEpochs} MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay {self.ewcTermGenerator.toString()}"
+
+    def setNetworkReference(self, network):
+        super().setNetworkReference(network)
+        self.ewcTermGenerator.setNetworkReference(network)
 
     def calculateVanillaChange(self, patterns:List[np.ndarray])->np.ndarray:
         # The weights changes start as a zero matrix
@@ -107,23 +112,9 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             # print(f"Result:\n{(vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)}")
             # exit()
 
+        weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)           
 
-        weight = np.zeros_like(self.network.weights)
-        # weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)
-        # weight[weight==np.inf] = vanillaTerm[weight==np.inf]
-        with warnings.catch_warnings():
-            warnings.filterwarnings('error')
-            try:
-                weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)
-                # weight[weight==np.inf] = vanillaTerm[weight==np.inf]
-            except Exception as e:
-                print(f"\n\n{e}")
-                print(f"Numerator:\n{(vanillaTerm + self.ewcLambda * ewcNumerator)}")
-                print(f"Denominator:\n{(1 + self.ewcLambda * ewcDenominator)}")
-                print(f"vanillaTerm:\n{vanillaTerm}")
-                print(f"ewcNumerator:\n{ewcNumerator}")
-                print(f"ewcDenominator:\n{ewcDenominator}")
-                exit()
+        self.ewcTermGenerator.epochCalculation(weight=weight)
 
         # Normalize the new weight matrix to avoid explosions
         # weight_magnitude = np.sum(np.abs(weight))
@@ -145,8 +136,9 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.numEpochs = 0
         self.temperature = self.initTemperature
         self.numStatesLearned+=len(taskPatterns)
+        self.ewcTermGenerator.finishTask()
         if not self.useOnlyFirstEWCTerm or len(self.ewcTerms)==0:
             self.ewcTerms.append(
-                self.ewcTermGenerator(self.network.weights.copy(), taskPatterns.copy())
+                self.ewcTermGenerator.generateTerm(self.network.weights.copy(), taskPatterns.copy())
             )
-        # print(self.ewcTerms)
+        self.ewcTermGenerator.startTask()
