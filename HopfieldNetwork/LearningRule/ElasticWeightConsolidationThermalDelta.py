@@ -12,7 +12,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
 
     def __init__(self, maxEpochs:int=100, trainUntilStable:bool=False, temperature:np.float64 = 1, temperatureDecay:np.float64=0, 
         ewcTermGenerator:AbstractEWCTerm=NoneEWCTerm, ewcLambda:np.float64 = 0,
-        useOnlyFirstEWCTerm:bool=False):
+        useOnlyFirstEWCTerm:bool=False, vanillaEpochsFactor:np.float64 = 0):
         """
         Create a new ThermalDelta Learning Rule
         Delta rule calculates the network state after a single update step
@@ -29,6 +29,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             ewcTermGenerator (AbstractOmega): The method of selecting weight importance. Defaults to None (0)
             ewcLambda (np.float64): Determines the importance of the EWC term in weight updates
             useOnlyFirstEWCTerm (bool, optional): Use only the EWC from the first task. Defaults to false
+            vanillaLearningFactor (np.float64, optional): The number of epochs (as ratio of maxEpochs) to learn vanilla
         """
 
         # Delta rule requires a single update step 
@@ -54,6 +55,8 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.useOnlyFirstEWCTerm = useOnlyFirstEWCTerm
         self.ewcTerms:List[AbstractEWCTerm.EWCTerm] = []
 
+        self.vanillaEpochsFactor = vanillaEpochsFactor
+
         self.ewcTermGenerator.startTask()
 
     def __str__(self):
@@ -73,6 +76,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             resultState = self.findRelaxedState(pattern.copy())
             phi = (np.dot(self.network.weights, pattern))
             weightChanges = weightChanges+np.outer(pattern-resultState, pattern)*np.exp(-1*np.linalg.norm(phi) / self.temperature)
+        np.fill_diagonal(weightChanges, 0)
         return weightChanges
 
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:
@@ -96,31 +100,21 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         # This is our approximation of gradient descent
 
         vanillaTerm = self.network.weights+self.calculateVanillaChange(patterns)
-        ewcNumerator = np.zeros_like(vanillaTerm)
-        ewcDenominator = np.zeros_like(vanillaTerm)
-        for e in self.ewcTerms:
-            # vanillaTerm = np.zeros_like(self.network.weights)
-            importance = e.getImportance()
-            ewcNumerator += importance * e.getTaskWeights()
-            ewcDenominator += importance
-            # print(f"ewcNumerator:\n{ewcNumerator}")
-            # print(f"ewcDenominator:\n{ewcDenominator}")
-            # print(f"Numerator:\n{(vanillaTerm + self.ewcLambda * ewcNumerator)}")
-            # print(f"Denominator:\n{(1 + self.ewcLambda * ewcDenominator)}")
-            # print(f"vanillaTerm:\n{vanillaTerm}")
-            # print(f"taskWeights:\n{e.getTaskWeights()}")
-            # print(f"Result:\n{(vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)}")
-            # exit()
+        # vanillaMagnitude = np.max(np.abs(vanillaTerm))
+        # vanillaTerm /= vanillaMagnitude
 
-        weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)           
+        if self.numEpochs < self.maxEpochs * self.vanillaEpochsFactor:
+            weight = vanillaTerm
+        else:
+            ewcNumerator = np.zeros_like(vanillaTerm)
+            ewcDenominator = np.zeros_like(vanillaTerm)
+            for e in self.ewcTerms:
+                importance = e.getImportance()
+                ewcNumerator += importance * e.getTaskWeights()
+                ewcDenominator += importance
+            weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)           
 
         self.ewcTermGenerator.epochCalculation(weight=weight)
-
-        # Normalize the new weight matrix to avoid explosions
-        # weight_magnitude = np.sum(np.abs(weight))
-        # if weight_magnitude!=0:
-        #     weight = weight / weight_magnitude
-        # print(weight)
         self.temperature -= self.temperatureDecay
         self.numEpochs+=1
         return weight
