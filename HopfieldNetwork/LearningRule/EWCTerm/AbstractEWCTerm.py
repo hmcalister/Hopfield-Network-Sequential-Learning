@@ -53,6 +53,7 @@ class AbstractEWCTerm(ABC):
     class EWCTerm:
         importance: np.ndarray
         taskWeights: np.ndarray
+        numPatterns: np.ndarray
 
         def getImportance(self):
             return self.importance.copy()

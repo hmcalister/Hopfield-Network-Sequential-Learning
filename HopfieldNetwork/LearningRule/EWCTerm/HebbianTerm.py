@@ -10,10 +10,10 @@ class HebbianTerm(AbstractEWCTerm):
         for pattern in taskPatterns:
             importance = importance+np.outer(0.5*pattern+0.5, 0.5*pattern+0.5)
         np.fill_diagonal(importance, 0)
-        importance /= np.max(importance)
         importance = np.abs(importance)
+        importance /= np.max(importance)
 
-        return self.EWCTerm(importance, taskWeights)
+        return self.EWCTerm(importance, taskWeights, len(taskPatterns))
         
     
     def __str__(self):

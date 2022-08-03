@@ -7,8 +7,8 @@ class NoneEWCTerm(AbstractEWCTerm):
         pass
 
     def generateTerm(self, taskWeights, taskPatterns):
-        importance = np.zeros_like(self.taskWeights)
-        return self.EWCTerm(importance, taskWeights)
+        importance = np.zeros_like(taskWeights)
+        return self.EWCTerm(importance, taskWeights, len(taskPatterns))
 
     
     def __str__(self):

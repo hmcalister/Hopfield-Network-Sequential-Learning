@@ -7,7 +7,7 @@ class WeightDecayTerm(AbstractEWCTerm):
 
     def generateTerm(self, taskWeights, taskPatterns):
         importance = np.ones_like(taskWeights)
-        return self.EWCTerm(importance, taskWeights)
+        return self.EWCTerm(importance, taskWeights, len(taskPatterns))
 
     
     def __str__(self):

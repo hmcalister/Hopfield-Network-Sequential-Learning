@@ -9,7 +9,7 @@ class SignCounterTerm(AbstractEWCTerm):
         importance = 1/self.totalSignChanges
         np.fill_diagonal(importance, 0)
         importance /= np.max(importance)
-        return self.EWCTerm(importance, taskWeights)
+        return self.EWCTerm(importance, taskWeights, len(taskPatterns))
 
     def startTask(self, **kwargs):
         self.totalSignChanges = 1
@@ -23,6 +23,7 @@ class SignCounterTerm(AbstractEWCTerm):
         
 
     def finishTask(self, **kwargs):
+        # print(self.totalSignChanges)
         pass
 
     
