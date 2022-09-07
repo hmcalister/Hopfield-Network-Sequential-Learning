@@ -4,17 +4,16 @@ from .EWCTerm.AbstractEWCTerm import AbstractEWCTerm
 from .EWCTerm.NoneEWCTerm import NoneEWCTerm
 from typing import List
 import numpy as np
+import warnings
 
-np.set_printoptions(precision=2)
-np.set_printoptions(suppress=True)
 
-class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
+class EnergyDirectedDeltaEWC(AbstractLearningRule):
 
-    def __init__(self, maxEpochs:int=100, trainUntilStable:bool=False, temperature:np.float64 = 1, temperatureDecay:np.float64=0, 
+    def __init__(self, maxEpochs:int=100, trainUntilStable:bool=False, alpha:np.float64=0, 
         ewcTermGenerator:AbstractEWCTerm=NoneEWCTerm, ewcLambda:np.float64 = 0,
         useOnlyFirstEWCTerm:bool=False, vanillaEpochsFactor:np.float64 = 0):
         """
-        Create a new ThermalDelta Learning Rule
+        Create a new EnergyDirectedDeltaEWC Learning Rule
         Delta rule calculates the network state after a single update step
         Then compares this resultState with the targetState and uses this to calculate a weight change.
 
@@ -22,14 +21,11 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             maxEpochs (int, optional): The epochs to train. Defaults to 10
             trainUntilStable (bool, optional): Flag to train current pattern until stable.
                 Defaults to False
-            temperature (np.float64, optional): The temperature of the learning rule
-                Defaults to 1
-            temperatureDecay (np.float64, optional): Value to decay temperature by linearly each epoch
-                Defaults to 0
+            alpha (np.float64, optional): The learning rate hyperparameter for energy directed learning
+                Defaults to 0.
             ewcTermGenerator (AbstractOmega): The method of selecting weight importance. Defaults to None (0)
             ewcLambda (np.float64): Determines the importance of the EWC term in weight updates
             useOnlyFirstEWCTerm (bool, optional): Use only the EWC from the first task. Defaults to false
-            vanillaLearningFactor (np.float64, optional): The number of epochs (as ratio of maxEpochs) to learn vanilla
         """
 
         # Delta rule requires a single update step 
@@ -44,11 +40,9 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
 
         # Flag to determine if we should train until stable, defaults to True
         self.trainUntilStable = trainUntilStable
-
-        self.temperatureDecay = temperatureDecay
-        self.initTemperature = temperature
-        self.temperature = temperature
-
+        
+        self.alpha = alpha
+        
         self.numEpochs = 0
         self.ewcTermGenerator = ewcTermGenerator
         self.ewcLambda = ewcLambda
@@ -59,24 +53,49 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         self.ewcTermGenerator.startTask()
 
     def __str__(self):
-        return f"EWC Learning"
+            
+        return f"EnergyDirectedDeltaEWC"
 
     def infoString(self):
-        return f"ElasticWeightConsolidationThermalDelta-{self.maxEpochs} MaxEpochs Temperature{self.temperature} {self.temperatureDecay}Decay {self.ewcTermGenerator.toString()}"
+            
+        return f"EnergyDirectedDeltaEWC-{self.maxEpochs} MaxEpochs"
 
     def setNetworkReference(self, network):
         super().setNetworkReference(network)
         self.ewcTermGenerator.setNetworkReference(network)
 
+    def phi(self, x: np.ndarray):
+        return np.tanh(x)
+
+    def derivative_phi(self, x: np.ndarray):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return (1/np.cosh(x))**2
+
     def calculateVanillaChange(self, patterns:List[np.ndarray])->np.ndarray:
+        """
+        Learn a set of patterns and return the weights
+
+        Args:
+            patterns (List[np.ndarray]): A list of patterns to learn
+
+        Returns:
+            np.ndarray: The new weights of the network after learning
+        """
+
         # The weights changes start as a zero matrix
         weightChanges = np.zeros_like(self.network.weights)
         for pattern in patterns:
+            patternUpdates = np.zeros_like(weightChanges)
             resultState = self.findRelaxedState(pattern.copy())
-            phi = (np.dot(self.network.weights, pattern))
-            weightChanges = weightChanges+np.outer(pattern-resultState, pattern)*np.exp(-1*np.linalg.norm(phi) / self.temperature)
-        np.fill_diagonal(weightChanges, 0)
-        return weightChanges
+            patternUpdates = np.outer(pattern-resultState, pattern)
+            hebbianMatrix = np.outer(pattern, pattern)
+            energyDirectedTerms = self.alpha * hebbianMatrix * self.derivative_phi(-self.network.weights * hebbianMatrix)
+            patternUpdates[patternUpdates==0] = energyDirectedTerms[patternUpdates==0]
+            weightChanges = weightChanges + 0.05 * patternUpdates
+
+
+        return self.network.weights + weightChanges
 
     def __call__(self, patterns:List[np.ndarray])->np.ndarray:
         """
@@ -99,8 +118,7 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         # This is our approximation of gradient descent
 
         vanillaTerm = self.network.weights+self.calculateVanillaChange(patterns)
-        # vanillaMagnitude = np.max(np.abs(vanillaTerm))
-        # vanillaTerm /= vanillaMagnitude
+        vanillaTerm /= np.max(np.abs(vanillaTerm))
 
         if self.numEpochs < self.maxEpochs * self.vanillaEpochsFactor:
             weight = vanillaTerm
@@ -114,9 +132,8 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
             weight = (vanillaTerm + self.ewcLambda * ewcNumerator) / (1 + self.ewcLambda * ewcDenominator)           
 
         self.ewcTermGenerator.epochCalculation(weight=weight)
-        self.temperature -= self.temperatureDecay
         self.numEpochs+=1
-        return weight
+        return weight/np.max(np.abs(weight))
 
     def finishTask(self, taskPatterns:List[np.ndarray]):
         """
@@ -127,7 +144,6 @@ class ElasticWeightConsolidationThermalDelta(AbstractLearningRule):
         """
 
         self.numEpochs = 0
-        self.temperature = self.initTemperature
         self.numStatesLearned+=len(taskPatterns)
         self.ewcTermGenerator.finishTask()
         if not self.useOnlyFirstEWCTerm or len(self.ewcTerms)==0:
