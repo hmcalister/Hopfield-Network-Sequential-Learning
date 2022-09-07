@@ -8,7 +8,7 @@ np.set_printoptions(suppress=True)
 N = 64
 
 numPatternsByTask = [20]
-numPatternsByTask.extend([5 for _ in range(3)])
+numPatternsByTask.extend([1 for _ in range(3)])
 
 # HYPERPARAMS ---------------------------------------------------------------------------------------------------------
 # Pattern generation params ---------------------------------------------------
@@ -19,46 +19,30 @@ patternManager = PatternManager.SequentialLearningPatternManager(
 # Network params---------------------------------------------------------------
 energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
-# updateRule = HopfieldNetwork.UpdateRule.Synchronous(activationFunction)
-# updateRule = HopfieldNetwork.UpdateRule.AsynchronousList(activationFunction)
-updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(
-    activationFunction, energyFunction)
+updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 
 
-EPOCHS = 500
-# learningRule = HopfieldNetwork.LearningRule.Hebbian()
-# learningRule = HopfieldNetwork.LearningRule.RehearsalHebbian(maxEpochs=EPOCHS, fracRehearse=0.2, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalHebbian(maxEpochs=EPOCHS, numRehearse=2, numPseudorehearsalSamples=10, updateRehearsalStatesFreq="Epoch")
-
-# learningRule = HopfieldNetwork.LearningRule.Delta(maxEpochs=EPOCHS)
-# learningRule = HopfieldNetwork.LearningRule.RehearsalDelta(maxEpochs=EPOCHS, numRehearse=3, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalDelta(maxEpochs=EPOCHS,
-#     fracRehearse=1, trainUntilStable=False,
-#     numPseudorehearsalSamples=512, updateRehearsalStatesFreq="Epoch",
-#     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
-#     rejectLearnedStatesAsPseudoitems=False)
-
+EPOCHS = 1000
 TEMPERATURE = 1000
 DECAY_RATE = np.round((1) * (TEMPERATURE/EPOCHS), 3)
-# learningRule = HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE)
-# learningRule = HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE,
-#     temperatureDecay=DECAY_RATE,
-#     fracRehearse=1, updateRehearsalStatesFreq="Epoch")
-# learningRule = HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-#     fracRehearse=1, trainUntilStable=False,
-#     numPseudorehearsalSamples=2048, updateRehearsalStatesFreq="Epoch",
-#     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True,
-#     rejectLearnedStatesAsPseudoitems=True)
 
-learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
-        maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
-        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm(), ewcLambda=0.01,
-        useOnlyFirstEWCTerm=False, vanillaEpochsFactor=0.8)
+# learningRule = HopfieldNetwork.LearningRule.Delta(EPOCHS, trainUntilStable=False)
+
+# learningRule = HopfieldNetwork.LearningRule.EnergyDirectedDelta(EPOCHS, trainUntilStable=False, alpha=0.)
+ 
+learningRule = HopfieldNetwork.LearningRule.EnergyDirectedDeltaEWC(EPOCHS, trainUntilStable=False, alpha=0.7, 
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.SignCounterTerm(), ewcLambda=0.4,
+        useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.0)
+
+# learningRule = HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
+#     maxEpochs=EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
+#     ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm(), ewcLambda=0.01,
+#     useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.8)
 
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.02
 inputNoise = None
-heteroassociativeNoiseRatio = 0.02
+heteroassociativeNoiseRatio = 0.0
 
 # SETUP ---------------------------------------------------------------------------------------------------------------
 # Create network
@@ -132,14 +116,8 @@ taskEpochBoundaries = [task.startEpoch for task in tasks]
 plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
                          title=f"{titleBasis}\n Stability by Task",
                          legend=[str(task) for task in tasks], figsize=(12, 6),
-                        #  fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
+                         #  fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
                          )
-
-# plotTaskPatternStability(taskPatternStabilities, taskEpochBoundaries=taskEpochBoundaries, plotAverage=False,
-#     title=f"{titleBasis}\n Stability by Task",
-#     legend=[str(task) for task in tasks], figsize=(12,6),
-#     fileName=f"graphs/{fileNameBasis}--StabilityByTask.png"
-#     )
 
 # plotTotalStablePatterns(numStableOverEpochs,
 #     title=f"{titleBasis}\n Total Stable States",

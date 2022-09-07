@@ -1,7 +1,9 @@
 import sys
 import os.path
+
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from HopfieldNetwork.LearningRule.EnergyDirectedDeltaEWC import EnergyDirectedDeltaEWC
 
 import copy
 import HopfieldNetwork
@@ -9,14 +11,17 @@ import PatternManager
 from HopfieldUtils import *
 import numpy as np
 from prettytable import PrettyTable
+from itertools import product
 
 np.set_printoptions(precision=2)
 N = 64
-NUMBER_RUNS = 1
+NUMBER_RUNS = 25
 MAX_EPOCHS = 500
 TEMPERATURE = 1000
-DECAY_RATE = np.round((1) * (TEMPERATURE/MAX_EPOCHS),3)
+DECAY_RATE = np.round((0) * (TEMPERATURE/MAX_EPOCHS),3)
 PSEUDOITEMS = 2048
+
+TITLE = f"Stability of Task 0 by Elastic Weight Consolidation Learning Rules"
 
 numPatternsByTask = [20]
 numPatternsByTask.extend([1 for _ in range(4)])
@@ -31,48 +36,60 @@ energyFunction = HopfieldNetwork.EnergyFunction.BipolarEnergyFunction()
 activationFunction = HopfieldNetwork.UpdateRule.ActivationFunction.BipolarHeaviside()
 updateRule = HopfieldNetwork.UpdateRule.AsynchronousPermutation(activationFunction, energyFunction)
 
+GRID_SEARCH_VALS = [(0)]
+GRID_SEARCH_VALS.extend(list(product([0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4])))
+
 learning_rules = [
 
     (HopfieldNetwork.LearningRule.ThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE), "Vanilla"),
 
-    (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-        fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Rehearsal"),
+    # (HopfieldNetwork.LearningRule.RehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+    #     fracRehearse=1, updateRehearsalStatesFreq="Epoch", rehearseFirstTaskOnly=True), "Rehearsal"),
 
-    (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-        fracRehearse=1, trainUntilStable=False,
-        numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
-        keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-        rejectLearnedStatesAsPseudoitems=False), "Pseudorehearsal"),
+    # (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+    #     fracRehearse=1, trainUntilStable=False,
+    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
+    #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+    #     rejectLearnedStatesAsPseudoitems=False), "Pseudorehearsal"),
 
-    (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
-        fracRehearse=1, trainUntilStable=False,
-        numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
-        keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
-        rejectLearnedStatesAsPseudoitems=True), "Spurious Pseudorehearsal"),
+    # (HopfieldNetwork.LearningRule.PseudorehearsalThermalDelta(maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+    #     fracRehearse=1, trainUntilStable=False,
+    #     numPseudorehearsalSamples=PSEUDOITEMS, updateRehearsalStatesFreq="Epoch", 
+    #     keepFirstTaskPseudoitems=True, requireUniquePseudoitems=True, 
+    #     rejectLearnedStatesAsPseudoitems=True), "Spurious Pseudorehearsal"),
 
+    (HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm(), ewcLambda=0.35,
+        useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.0), f"Hebbian Based EWC"),
 
+    (HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=DECAY_RATE,
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.SignCounterTerm(), ewcLambda=0.15,
+        useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.0), f"Sign Counting Based EWC"),
 
+    (HopfieldNetwork.LearningRule.EnergyDirectedDeltaEWC(MAX_EPOCHS, trainUntilStable=False, alpha=0.5, 
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.HebbianTerm(), ewcLambda=0.5,
+        useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.0), f"Energy Directed Hebbian EWC"),
 
-    # (HopfieldNetwork.LearningRule.ElasticWeightConsolidationThermalDelta(
-    #     maxEpochs=MAX_EPOCHS, temperature=TEMPERATURE, temperatureDecay=0.0*DECAY_RATE,
-    #     ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.WeightDecayTerm, ewcLambda=0.005,
-    #     useOnlyFirstEWCTerm=True), "EWC - Omega=1"),
+    (HopfieldNetwork.LearningRule.EnergyDirectedDeltaEWC(MAX_EPOCHS, trainUntilStable=False, alpha=0.7, 
+        ewcTermGenerator=HopfieldNetwork.LearningRule.EWCTerm.SignCounterTerm(), ewcLambda=0.4,
+        useOnlyFirstEWCTerm=True, vanillaEpochsFactor=0.0), f"Energy Directed Sign Counting EWC"),
+        
 ]
 # Network noise/error params --------------------------------------------------
 allowableLearningStateError = 0.02
 inputNoise = None
-heteroassociativeNoiseRatio = 0.05
+heteroassociativeNoiseRatio = 0.0
 
 
 # Array for each learning rule results
 results_by_learning_rule = []
 
-for learningRule in learning_rules:
+for (i, learningRule) in enumerate(learning_rules):
     
     currLearningRuleResults = np.zeros(shape=(len(numPatternsByTask)*MAX_EPOCHS, len(numPatternsByTask)))
     run = 0
     while run < NUMBER_RUNS:
-        print(f"{learningRule[1]} RUN: {run+1}/{NUMBER_RUNS}")
+        print(f"{i+1}/{len(learning_rules)} {learningRule[1]} RUN: {run+1}/{NUMBER_RUNS}")
         # SETUP ---------------------------------------------------------------------------------------------------------------
         # Create network
         network = HopfieldNetwork.GeneralHopfieldNetwork(
@@ -124,10 +141,6 @@ for learningRule in learning_rules:
             print(f"Most Recent Epoch Stable States: {numStable[-1]}")
             print()
 
-        if isinstance(network.learningRule, HopfieldNetwork.LearningRule.PseudorehearsalDelta) and len(network.learningRule.stableStates) == 0:
-            print("ERR NO PSEUDOREHEARSAL STATES FOUND\n\n")
-            continue
-
         run += 1 
         currLearningRuleResults += taskPatternStabilities.copy()
     currLearningRuleResults /= NUMBER_RUNS
@@ -141,7 +154,7 @@ for i in range(len(numPatternsByTask)):
     plt.axvline(MAX_EPOCHS*i, color=(0, 0, 0, 0.5), linestyle='--', linewidth=0.75)
     plt.text(MAX_EPOCHS*(2*i+1)/2, 0.0, f"Task {i}\n{numPatternsByTask[i]} State{'s' if numPatternsByTask[i]>1 else ''}", horizontalalignment="center")
 
-plt.title(f"Stability of Task 0 by Learning Rule")
+plt.title(TITLE)
 plt.xlabel("Epoch")
 plt.ylabel("Task 0 Accuracy")
 plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
